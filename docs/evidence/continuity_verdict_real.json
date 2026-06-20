@@ -1,0 +1,20 @@
+{
+  "shot_id": "S02",
+  "verdict": "fail",
+  "violations": [
+    {
+      "type": "actor_drift",
+      "actor": "Luna",
+      "prop": "eyes",
+      "detail": "Missing required fixed marker 'yellow clay eyes'. The cat's eyes are closed."
+    },
+    {
+      "type": "actor_drift",
+      "actor": "Luna",
+      "prop": "ear",
+      "detail": "Missing required fixed marker 'crooked left ear'. Both ears are perfectly symmetrical and upright."
+    }
+  ],
+  "repair_action": "Regenerate the frame ensuring Luna has visible yellow clay eyes and a distinctly crooked left ear, while maintaining the red ribbon and handmade clay texture.",
+  "memory_policy": "retain"
+}
