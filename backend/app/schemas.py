@@ -93,6 +93,58 @@ class RedThreadMemory(BaseModel):
     auto_greenlight: Optional[AutoGreenlight] = None
 
 
+# --- Contracts (live Qwen output, also validate fixtures) ---
+class ActorContract(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    actor_id: str
+    display_name: str
+    role: str
+    fixed_markers: List[str]
+    forbidden_drift: List[str]
+    motion_signature: Optional[str] = None
+
+
+class ActorContracts(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    actors: List[ActorContract]
+
+
+class StyleContract(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    style_id: str
+    rules: List[str]
+
+
+class StoryBeats(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    hook: str
+    conflict: str
+    reversal: str
+    button: str
+
+
+class StoryContract(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    title: str
+    beats: StoryBeats
+    tone: Optional[str] = None
+    runtime_seconds: Optional[int] = None
+    episode_id: Optional[str] = None
+
+
+# --- Storyboard ---
+class StoryboardShot(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    shot_id: str
+    action: str
+    time: Optional[str] = None
+
+
+class StoryboardSlate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    shots: List[StoryboardShot]
+
+
 # --- Production Report (aggregate export) ---
 class ProductionReport(BaseModel):
     episode_id: str

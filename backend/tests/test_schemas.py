@@ -34,3 +34,27 @@ def test_red_thread_memory_fixture():
     assert m.story_memory.new_fact.startswith("Luna hid")
     assert m.auto_greenlight is not None
     assert m.auto_greenlight.episode_2_title == "The Delivery Box"
+
+
+def test_actor_contracts_fixture():
+    a = schemas.ActorContracts(**_load("actor_contracts.json"))
+    luna = next(x for x in a.actors if x.actor_id == "luna_cat")
+    assert "red ribbon" in luna.fixed_markers
+
+
+def test_style_contract_fixture():
+    s = schemas.StyleContract(**_load("style_contract.json"))
+    assert s.style_id == "clay_stop_motion_mvp"
+    assert len(s.rules) >= 1
+
+
+def test_story_contract_fixture():
+    s = schemas.StoryContract(**_load("story_contract.json"))
+    assert s.title == "The Last Alarm"
+    assert s.beats.button.startswith("Worker")
+
+
+def test_storyboard_slate_fixture():
+    sb = schemas.StoryboardSlate(**_load("storyboard_slate.json"))
+    assert len(sb.shots) == 4
+    assert sb.shots[1].shot_id == "S02"
