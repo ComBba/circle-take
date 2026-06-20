@@ -47,3 +47,11 @@ def test_unknown_episode_404():
     c = _client()
     assert c.get("/api/episodes/nope").status_code == 404
     app.dependency_overrides.clear()
+
+
+def test_ui_served():
+    c = _client()
+    r = c.get("/ui/")
+    assert r.status_code == 200
+    assert "Circle Take" in r.text
+    app.dependency_overrides.clear()

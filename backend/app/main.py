@@ -10,6 +10,8 @@ import json
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .deps import get_store
 from .schemas import EpisodeBrief, EpisodeState, ProductionReport
@@ -18,7 +20,16 @@ from .store import Store
 
 app = FastAPI(title="Circle Take API", version="0.1.0")
 
+# Demo CORS — let the static UI (and judges' browsers) call the API from any origin.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 GOLDEN = Path(__file__).resolve().parents[2] / "examples" / "golden_path"
+FRONTEND = Path(__file__).resolve().parents[2] / "frontend"
 
 
 def _load_json(name: str):
@@ -121,3 +132,8 @@ def report(eid: str, store: Store = Depends(get_store)):
         title=ep["title"],
         artifacts=ep["artifacts"],
     )
+
+
+# Serve the self-contained demo UI at /ui (mounted last so it never shadows /api or /health).
+if FRONTEND.is_dir():
+    app.mount("/ui", StaticFiles(directory=str(FRONTEND), html=True), name="ui")

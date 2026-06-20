@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Circle Take — Bad takes don't make the cut.</title>
+<style>
+  :root{
+    --bg:#0b0d12; --panel:#141821; --panel2:#1b2030; --line:#2a3142;
+    --fg:#e8edf5; --muted:#8b96ab; --accent:#7c9cff; --gold:#f3c969;
+    --red:#ff5d5d; --green:#54d28a; --ribbon:#e23b4e;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;background:radial-gradient(1200px 600px at 50% -10%,#161b2b,var(--bg));color:var(--fg);min-height:100vh}
+  .wrap{max-width:1100px;margin:0 auto;padding:2rem 1.25rem 4rem}
+  header{display:flex;align-items:baseline;gap:.9rem;flex-wrap:wrap;margin-bottom:.25rem}
+  h1{font-size:2rem;font-weight:800;letter-spacing:-.02em}
+  .tag{color:var(--gold);font-style:italic}
+  .sub{color:var(--muted);margin:.4rem 0 1.25rem}
+  .badge{font-size:.72rem;padding:.2rem .6rem;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+  .bar{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:.9rem 1rem;margin-bottom:1.25rem}
+  input{background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:9px;padding:.5rem .7rem;font-size:.9rem}
+  input#title{min-width:220px}
+  button{background:linear-gradient(180deg,#7c9cff,#5f7ff0);color:#0a0e18;border:0;border-radius:10px;padding:.6rem 1.1rem;font-weight:700;cursor:pointer;font-size:.92rem}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:var(--panel2);color:var(--fg);border:1px solid var(--line)}
+  .track{display:flex;gap:.4rem;flex-wrap:wrap;margin:0 0 1.25rem}
+  .pill{font-size:.7rem;padding:.25rem .55rem;border-radius:7px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+  .pill.done{color:var(--green);border-color:rgba(84,210,138,.4)}
+  .pill.active{color:var(--gold);border-color:rgba(243,201,105,.5)}
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.25rem;margin:.85rem 0;opacity:0;transform:translateY(8px);transition:.4s}
+  .stage.show{opacity:1;transform:none}
+  .stage h3{font-size:1.05rem;margin-bottom:.5rem;display:flex;gap:.5rem;align-items:center}
+  .stage h3 .n{color:var(--muted);font-size:.8rem;font-weight:600}
+  pre{background:#0a0d14;border:1px solid var(--line);border-radius:9px;padding:.7rem .85rem;overflow:auto;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.78rem;line-height:1.5;color:#cdd7ea}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:.7rem}
+  .card .id{font-weight:700} .card.high{border-color:rgba(255,93,93,.5)}
+  .risk{font-size:.7rem;padding:.1rem .45rem;border-radius:6px;background:rgba(255,93,93,.15);color:var(--red)}
+  .risk.low{background:rgba(84,210,138,.15);color:var(--green)} .risk.medium{background:rgba(243,201,105,.15);color:var(--gold)}
+  .cut{font-size:3.2rem;font-weight:900;letter-spacing:.12em;color:var(--red);text-align:center;padding:1rem;border:2px dashed rgba(255,93,93,.5);border-radius:14px;background:rgba(255,93,93,.05)}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+  .frame{border:1px solid var(--line);border-radius:10px;padding:1rem;text-align:center;background:var(--panel2)}
+  .frame .lbl{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .frame .big{font-size:2.4rem;margin:.4rem 0}
+  .frame.bad{border-color:rgba(255,93,93,.4)} .frame.good{border-color:rgba(84,210,138,.45)}
+  .ribbon-on{color:var(--ribbon)} .miss{color:var(--muted);text-decoration:line-through}
+  .scores{display:flex;gap:.6rem;flex-wrap:wrap}
+  .score{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:.5rem .8rem;text-align:center}
+  .score b{display:block;font-size:1.3rem;color:var(--green)}
+  .note{color:var(--muted);font-size:.78rem;margin-top:.5rem}
+  footer{color:var(--muted);font-size:.78rem;margin-top:2rem;text-align:center}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Circle Take</h1>
+    <span class="tag">Bad takes don't make the cut.</span>
+    <span class="badge" id="mode">fixture mode</span>
+  </header>
+  <p class="sub">A self-correcting production loop: catch broken continuity, reshoot only the failed shot, remember only approved takes. Track 2 — AI Showrunner.</p>
+
+  <div class="bar">
+    <label class="pill">Brief</label>
+    <input id="title" value="The Last Alarm" />
+    <label class="pill">API</label>
+    <input id="api" style="min-width:230px" />
+    <button id="run">▶ Run Circle Take</button>
+    <button id="reset" class="ghost">Reset</button>
+  </div>
+
+  <div class="track" id="track"></div>
+  <div id="stages"></div>
+
+  <footer>
+    Powered by Qwen Cloud · live runs use <code>qwen3.7-plus</code> + Wan 2.7. In fixture mode the loop runs on documented golden-path artifacts (never presented as live AI output).
+  </footer>
+</div>
+
+<script>
+const $ = (s)=>document.querySelector(s);
+const apiInput = $('#api');
+apiInput.value = (location.protocol.startsWith('http') ? location.origin : 'http://localhost:8000');
+const STEPS = ['create','generate','review','reshoot','memory','report'];
+const LABELS = {create:'Brief',generate:'Contracts→Take 1',review:'CUT / Court',reshoot:'Take Two',memory:'Memory',report:'Report'};
+let busy=false;
+
+function renderTrack(active){
+  $('#track').innerHTML = STEPS.map((s,i)=>{
+    const cls = active>i?'done':(active===i?'active':'');
+    return `<span class="pill ${cls}">${i+1}. ${LABELS[s]}</span>`;
+  }).join('');
+}
+function stage(id,title,n,html){
+  let el=document.getElementById('st-'+id);
+  if(!el){el=document.createElement('div');el.id='st-'+id;el.className='stage';$('#stages').appendChild(el);}
+  el.innerHTML=`<h3>${title} <span class="n">${n}</span></h3>`+html;
+  requestAnimationFrame(()=>el.classList.add('show'));
+  el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+const J = (o)=>`<pre>${JSON.stringify(o,null,2)}</pre>`;
+async function call(method,path,body){
+  const r=await fetch(apiInput.value+path,{method,headers:{'content-type':'application/json'},body:body?JSON.stringify(body):undefined});
+  if(!r.ok) throw new Error(path+' -> '+r.status);
+  return r.json();
+}
+
+async function run(){
+  if(busy) return; busy=true; $('#run').disabled=true; $('#stages').innerHTML='';
+  try{
+    renderTrack(0);
+    const created = await call('POST','/api/episodes',{title:$('#title').value});
+    const id = created.episode_id;
+    stage('brief','🎬 Brief',`episode ${id} · ${created.state}`,J(created.artifacts.brief));
+
+    renderTrack(1);
+    const gen = await call('POST',`/api/episodes/${id}/generate`);
+    const a = gen.artifacts;
+    const actors = (a.actor_contracts.actors||[]).map(x=>`<div class="card"><div class="id">${x.display_name}</div><div class="note">fixed: ${x.fixed_markers.join(', ')}</div></div>`).join('');
+    stage('contracts','📜 Contracts',gen.state,`<div class="grid">${actors}</div><div class="note">Style: ${a.style_contract.style_id}</div>`);
+    const shots=(a.shot_risk_ledger.risks||[]).map(s=>`<div class="card ${s.risk_level==='high'?'high':''}"><div class="id">${s.shot_id}</div><span class="risk ${s.risk_level}">${s.risk_level}</span><div class="note">${s.route||''}</div></div>`).join('');
+    stage('slate','🎞️ Storyboard Slate + Shot Risk',gen.state,`<div class="grid">${shots}</div>`);
+    stage('take1','🎥 Take 1',gen.state,`<div class="frame bad"><div class="lbl">Shot 2 · generated</div><div class="big">🐈‍⬛ <span class="miss">red ribbon</span></div><div class="note">${a.take_1.pending?('⏳ '+a.take_1.pending):'live'}</div></div>`);
+
+    renderTrack(2);
+    const rev = await call('POST',`/api/episodes/${id}/review`);
+    stage('cut','✋ CUT','the show stops itself',`<div class="cut">CUT.</div>`);
+    stage('court','⚖️ Continuity Court — Qwen verdict',rev.state,J(rev.artifacts.continuity_verdict));
+
+    renderTrack(3);
+    const rs = await call('POST',`/api/episodes/${id}/reshoot`);
+    stage('spell','🪄 Reshoot Spell (Shot 2 only)',rs.state,`<pre>${rs.artifacts.reshoot_spell}</pre>`);
+    stage('take2','🔁 Take Two Reveal',rs.state,
+      `<div class="ba"><div class="frame bad"><div class="lbl">Before</div><div class="big">🐈‍⬛ <span class="miss">no ribbon</span> · 🔢</div></div>`+
+      `<div class="frame good"><div class="lbl">After</div><div class="big">🐈‍⬛<span class="ribbon-on">🎀</span> · 🕰️</div></div></div>`+
+      `<div class="note">Only Shot 2 was reshot — Shots 1/3/4 untouched.</div>`);
+
+    renderTrack(4);
+    const mem = await call('POST',`/api/episodes/${id}/memory`);
+    const ag=mem.artifacts.anchor_gate;
+    stage('gate','✅ Anchor Gate',mem.state,`<div class="scores"><div class="score"><b>${ag.identity_score}</b>identity</div><div class="score"><b>${ag.style_score}</b>style</div><div class="score"><b>${ag.prop_score}</b>prop</div><div class="score"><b>${ag.anchor_status}</b>status</div></div>`);
+    const m=mem.artifacts.red_thread_memory;
+    stage('memory','🧵 Red-Thread Memory + Auto Greenlight',mem.state,
+      J(m.story_memory)+`<div class="note">Next cold open → <b>${m.auto_greenlight.episode_2_title}</b>: ${m.auto_greenlight.cold_open}</div>`);
+
+    renderTrack(5);
+    const rep = await call('GET',`/api/episodes/${id}/report`);
+    stage('done','🏁 Only approved takes become memory.',rep.state,`<div class="note">Production report ready · state <b>${rep.state}</b></div>`);
+    renderTrack(6);
+  }catch(e){
+    stage('err','⚠️ Error','',`<pre>${e.message}\n\nIs the API running at ${apiInput.value}?</pre>`);
+  }finally{ busy=false; $('#run').disabled=false; }
+}
+$('#run').onclick=run;
+$('#reset').onclick=()=>{$('#stages').innerHTML='';renderTrack(-1);};
+renderTrack(-1);
+</script>
+</body>
+</html>

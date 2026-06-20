@@ -17,6 +17,7 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 # App code + golden-path fixtures (main.py resolves examples relative to repo root).
 COPY backend ./backend
 COPY examples ./examples
+COPY frontend ./frontend
 
 # Non-root user owns the app + writable data dir.
 RUN useradd -m appuser \
