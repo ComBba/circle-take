@@ -11,6 +11,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config
@@ -160,6 +161,20 @@ def report(eid: str, store: Store = Depends(get_store)):
         title=ep["title"],
         artifacts=ep["artifacts"],
     )
+
+
+_MEDIA_WHITELIST = {"take1_S02.mp4", "take2_S02.mp4", "take1_frame.png", "take2_frame.png"}
+
+
+@app.get("/api/media/{name}")
+def media(name: str):
+    """Serve a live-generated clip/frame from artifacts/live (whitelisted; 404 in fixture mode)."""
+    if name not in _MEDIA_WHITELIST:
+        raise HTTPException(status_code=404, detail="unknown media")
+    p = LIVE / name
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="not generated (run live golden path)")
+    return FileResponse(str(p))
 
 
 # Serve the self-contained demo UI at /ui (mounted last so it never shadows /api or /health).
