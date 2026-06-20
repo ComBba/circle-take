@@ -14,6 +14,7 @@
 | 6 | `timeout: command not found` (macOS) | macOS has no GNU `timeout` | Use the script's own internal time bounds (or `gtimeout` if coreutils present) | 2026-06-21 |
 | 7 | `No module named uvicorn` when starting server | Activated the Playwright venv (`.venv-chrome-auth`) which lacks uvicorn | Start the server with the backend venv (`backend/.venv`); run Playwright with its own venv | 2026-06-21 |
 | 8 | Commit message stated a wrong test count | Wrote the count from memory, not the test output | Read the actual `pytest` count before writing the message | 2026-06-21 |
+| 9 | json 400 returned ONLY on vision calls (text fine) after the #1 fix | The "is 'json' present?" guard scanned serialized messages incl. **base64 image data**, which contains "json" by chance → guard skipped the directive | Inject the JSON directive **unconditionally** in `_json_loop` (never scan image bytes) | 2026-06-21 |
 
 ## Standing rules (distilled)
 - **Official docs + latest stable versions only**; verify "latest" at build time; never trust training memory for APIs.

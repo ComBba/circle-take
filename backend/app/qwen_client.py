@@ -72,10 +72,10 @@ def chat_raw(
 
 
 def _json_loop(messages: List[dict], schema: Type[T], model: Optional[str], retries: int) -> T:
-    # DashScope (OpenAI-compatible) requires the literal word "json" in the prompt to use
-    # response_format=json_object: "'messages' must contain the word 'json' ...".
-    if "json" not in json.dumps(messages).lower():
-        messages = messages + [{"role": "system", "content": "Respond with a single valid JSON object."}]
+    # DashScope json_object mode requires the literal word "json" in the prompt. Scanning the
+    # serialized messages is unreliable — base64 image data (vision calls) can contain "json"
+    # by chance — so ALWAYS inject an explicit JSON directive.
+    messages = messages + [{"role": "system", "content": "Respond with a single valid JSON object."}]
     last: Exception | None = None
     for _ in range(retries + 1):
         content = chat_raw(messages, model=model, response_format={"type": "json_object"})
