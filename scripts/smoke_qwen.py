@@ -15,14 +15,20 @@ import json
 import httpx
 
 try:
+    from pathlib import Path
     from dotenv import load_dotenv
-    load_dotenv()  # loads .env if present
+    _root = Path(__file__).resolve().parents[1]
+    load_dotenv(_root / ".env.local")  # secrets (gitignored; preferred)
+    load_dotenv(_root / ".env")        # fallback if present
 except Exception:
     pass
 
+# Mode: "text" = text+vision only (cheap); "all" (default) also creates a video task.
+MODE = sys.argv[1] if len(sys.argv) > 1 else "all"
+
 KEY = os.getenv("QWEN_API_KEY", "")
 if not KEY or KEY == "replace_me":
-    sys.exit("QWEN_API_KEY not set. Put it in circle-take/.env then re-run.")
+    sys.exit("QWEN_API_KEY not set. Put it in circle-take/.env.local then re-run.")
 
 HOST = "https://dashscope-intl.aliyuncs.com"
 AUTH = {"Authorization": f"Bearer {KEY}"}
@@ -80,6 +86,9 @@ def main() -> None:
     print("== VISION-capable ==")
     for m in VISION_CANDIDATES:
         print(f"  {m}: {try_chat(m)}")
+    if MODE != "all":
+        print("== VIDEO skipped (text mode) ==")
+        return
     print("== VIDEO (create task) ==")
     first_ok = None
     for m in VIDEO_CANDIDATES:
