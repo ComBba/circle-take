@@ -18,6 +18,12 @@ Circle Take is a self-correcting production loop for generated episodes. It catc
 
 > Runtime is **fixture-first**: the full loop runs today on the documented golden-path artifacts. Setting `QWEN_API_KEY` (and `APP_ENV=live`) swaps fixture loads for real Qwen3.7 + Wan 2.7 calls — fixtures are never presented as live AI output.
 
+## Demo
+
+The self-contained UI (served at `/ui`) walks the full golden path in the browser — the **CUT** moment is the centerpiece:
+
+![Circle Take golden-path demo UI](docs/screenshots/golden-path.png)
+
 ## Golden Path
 
 `Brief → Contracts → Storyboard → Take 1 → CUT → Continuity Court verdict → Reshoot (Shot 2 only) → Take Two → Anchor Gate → Red-Thread Memory → Auto Greenlight (Episode 2: "The Delivery Box")`
