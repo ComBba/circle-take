@@ -1,0 +1,12 @@
+.git/
+.venv/
+backend/.venv/
+**/__pycache__/
+*.pyc
+*.db
+.env
+artifacts/
+node_modules/
+frontend/node_modules/
+frontend/.next/
+.chrome-auth/

@@ -1,0 +1,18 @@
+# Circle Take — local/Alibaba Cloud compose. `.env` is optional (fixture mode runs without it).
+services:
+  api:
+    build: .
+    image: circle-take-api:latest
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_ENV: ${APP_ENV:-fixture}
+    volumes:
+      - ct-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  ct-data:
