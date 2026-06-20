@@ -87,36 +87,42 @@ We learned that generated video workflows need production supervision, not just 
 
 ## Built With
 
-Qwen Cloud, Qwen visual understanding, Wan / HappyHorse video generation, FastAPI, Python, Alibaba Cloud, object storage, JSON schemas, [FILL frontend stack].
+Qwen Cloud (qwen3.7-plus text + vision), Wan 2.7 video generation (T2V/I2V/R2V/VideoEdit), FastAPI, Python 3.12, Pydantic v2, Alibaba Cloud OSS (oss2), SQLite, Docker, vanilla HTML/CSS/JS demo UI, JSON schemas.
 
 ## Repository URL
 
-[FILL: public GitHub repo URL]
+https://github.com/ComBba/circle-take
 
 ## Demo Video URL
 
-[FILL: public YouTube/Vimeo/Youku URL, under 3 minutes]
+[FILL: public YouTube/Vimeo/Youku URL, under 3 minutes — record per docs/demo_script.md]
 
 ## Live Demo / Testing URL
 
-[FILL: deployed testing URL]
+Run free locally (no account, no paid cloud):
+```bash
+git clone https://github.com/ComBba/circle-take && cd circle-take
+docker compose up --build      # -> http://localhost:8000/ui
+```
+[Optional public URL: `cloudflared tunnel --url http://localhost:8000` — FILL with the tunnel URL if used.]
 
 ## Testing Instructions
 
-1. Open the demo URL.
-2. Use the default golden path brief: `The Last Alarm`.
-3. Click `Run Circle Take`.
-4. Review Contracts, Storyboard Slate, Take 1, Continuity Court verdict, Reshoot Spell, Take Two Reveal, and Red-Thread Memory.
-5. No paid account is required for judges. If login is enabled, use: `[FILL credentials]`.
+1. `docker compose up --build`, then open `http://localhost:8000/ui` (fixture mode — no credentials, no cost).
+2. The default brief `The Last Alarm` is preloaded; click **Run Circle Take**.
+3. Watch the full golden path: Contracts → Storyboard (S02 high-risk) → Take 1 → **CUT** → Continuity Court verdict JSON → Reshoot Spell → Take Two → Anchor Gate → Red-Thread Memory → Auto Greenlight.
+4. No login or paid account required. For the *live* run on real Qwen3.7 + Wan2.7 + OSS, see `docs/evidence/golden-path/` and `deployment/local-docker.md`.
 
 ## Alibaba Cloud Deployment Proof
 
-[FILL: link to code file in repo showing Alibaba Cloud services/APIs used]
+https://github.com/ComBba/circle-take/blob/main/backend/app/oss_storage.py
+(also `deployment/alibaba_cloud_services.py`) — real `oss2` SDK usage uploading generated
+videos/keyframes/verdicts to OSS bucket `circle-take-media`.
 
 ## Architecture Diagram
 
-[FILL: link to architecture diagram file in repo]
+https://github.com/ComBba/circle-take/blob/main/docs/architecture.png
 
 ## License
 
-[FILL: MIT / Apache-2.0]
+MIT — https://github.com/ComBba/circle-take/blob/main/LICENSE
