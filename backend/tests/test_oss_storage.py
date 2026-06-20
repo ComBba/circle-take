@@ -1,5 +1,4 @@
 import pytest
-
 from app import oss_storage
 
 OSS_ENV = [

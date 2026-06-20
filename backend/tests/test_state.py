@@ -1,4 +1,4 @@
-from app.state import EpisodeStatus, next_status, can_transition
+from app.state import EpisodeStatus, can_transition, next_status
 
 
 def test_linear_progression():

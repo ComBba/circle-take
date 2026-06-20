@@ -1,11 +1,10 @@
 import os
 import tempfile
 
-from fastapi.testclient import TestClient
-
-from app.main import app
 from app.deps import get_store
+from app.main import app
 from app.store import Store
+from fastapi.testclient import TestClient
 
 
 def _client():

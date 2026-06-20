@@ -1,0 +1,12 @@
+# Ruff config — https://docs.astral.sh/ruff/
+target-version = "py312"
+line-length = 120
+exclude = [".venv", "backend/.venv", "artifacts", ".chrome-auth", ".venv-chrome-auth"]
+
+[lint]
+select = ["E", "F", "I"]   # pycodestyle errors, pyflakes (real bugs), isort
+ignore = ["E731"]          # one-line lambda assignment is fine in tests
+
+[lint.per-file-ignores]
+# scripts intentionally load .env.local before importing app modules
+"scripts/*" = ["E402"]

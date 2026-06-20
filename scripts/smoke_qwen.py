@@ -8,14 +8,16 @@ Usage:
     # put QWEN_API_KEY in circle-take/.env (gitignored), then:
     python scripts/smoke_qwen.py
 """
+import json
 import os
 import sys
 import time
-import json
+
 import httpx
 
 try:
     from pathlib import Path
+
     from dotenv import load_dotenv
     _root = Path(__file__).resolve().parents[1]
     load_dotenv(_root / ".env.local")  # secrets (gitignored; preferred)
