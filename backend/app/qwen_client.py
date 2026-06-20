@@ -65,11 +65,17 @@ def chat_raw(
             r.raise_for_status()
             data = r.json()
         return data["choices"][0]["message"]["content"]
+    except httpx.HTTPStatusError as e:
+        raise QwenError(f"chat HTTP {e.response.status_code}: {e.response.text[:300]}") from e
     except (httpx.HTTPError, KeyError, IndexError) as e:
         raise QwenError(f"chat call failed: {e}") from e
 
 
 def _json_loop(messages: List[dict], schema: Type[T], model: Optional[str], retries: int) -> T:
+    # DashScope (OpenAI-compatible) requires the literal word "json" in the prompt to use
+    # response_format=json_object: "'messages' must contain the word 'json' ...".
+    if "json" not in json.dumps(messages).lower():
+        messages = messages + [{"role": "system", "content": "Respond with a single valid JSON object."}]
     last: Exception | None = None
     for _ in range(retries + 1):
         content = chat_raw(messages, model=model, response_format={"type": "json_object"})
