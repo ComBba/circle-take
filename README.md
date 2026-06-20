@@ -86,7 +86,26 @@ Endpoint: `dashscope-intl.aliyuncs.com` (chat: `/compatible-mode/v1`; video: asy
 
 ## Architecture
 
-See `docs/architecture.md` and `docs/architecture.png`. State machine: `DRAFT → CONTRACTED → STORYBOARDED → GENERATING → TAKE_1_READY → REVIEWING → CUT_REQUIRED → RESHOOTING → TAKE_2_READY → ANCHOR_APPROVED → REMEMBERED → AUTO_GREENLIT`.
+```mermaid
+flowchart LR
+  UI["Demo UI /ui"] -->|REST| API
+  subgraph API["FastAPI orchestrator"]
+    EP["7 endpoints"]
+    SM["state machine"]
+    DB[("SQLite")]
+    EP --> SM
+    EP --> DB
+  end
+  API --> QC["qwen_client"]
+  API --> VT["video_tasks"]
+  API --> OSS["oss_storage"]
+  QC -->|"qwen3.7-plus chat+vision"| QWEN["Qwen Cloud"]
+  VT -->|"wan2.7-t2v create→poll"| WAN["Wan 2.7"]
+  OSS -->|"put_object"| BUCKET[("Alibaba OSS")]
+```
+
+Full diagrams (system / state machine / live sequence) + `architecture.png` in [`docs/architecture.md`](docs/architecture.md).
+State machine: `DRAFT → CONTRACTED → STORYBOARDED → GENERATING → TAKE_1_READY → REVIEWING → CUT_REQUIRED → RESHOOTING → TAKE_2_READY → ANCHOR_APPROVED → REMEMBERED → AUTO_GREENLIT`.
 
 ## Environment Variables
 
