@@ -1,0 +1,10 @@
+{
+  "shot_id": "S02",
+  "verdict": "fail",
+  "violations": [
+    {"type": "fixed_marker_missing", "actor": "luna_cat", "detail": "red ribbon missing"},
+    {"type": "prop_identity_drift", "prop": "alarm_clock", "detail": "paper dial changed to digital"}
+  ],
+  "repair_action": "reshoot_shot_only",
+  "memory_policy": "quarantine_failed_keyframe"
+}

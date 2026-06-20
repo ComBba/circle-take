@@ -1,0 +1,8 @@
+{
+  "shots": [
+    {"shot_id": "S01", "time": "0-3s", "action": "Alarm Clock sees a smartwatch ad on the desk."},
+    {"shot_id": "S02", "time": "3-7s", "action": "Luna hides the ad under her tail while pretending innocence."},
+    {"shot_id": "S03", "time": "7-12s", "action": "Alarm Clock rings one last time, trembling."},
+    {"shot_id": "S04", "time": "12-15s", "action": "Worker mumbles five more minutes and falls asleep again."}
+  ]
+}

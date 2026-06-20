@@ -1,0 +1,13 @@
+{
+  "style_id": "clay_stop_motion_mvp",
+  "style_name": "Clay Stop-Motion",
+  "rules": [
+    "handmade clay texture",
+    "visible fingerprints",
+    "tabletop miniature set",
+    "pose-to-pose stop-motion feel",
+    "paper props",
+    "no glossy 3D look",
+    "no photorealistic live action"
+  ]
+}

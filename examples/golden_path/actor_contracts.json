@@ -1,0 +1,20 @@
+{
+  "actors": [
+    {
+      "actor_id": "luna_cat",
+      "display_name": "Luna",
+      "role": "jealous black cat",
+      "fixed_markers": ["red ribbon", "yellow clay eyes", "crooked left ear"],
+      "forbidden_drift": ["missing ribbon", "realistic fur", "different eye color"],
+      "motion_signature": "sneaky low posture; tail hides objects when lying"
+    },
+    {
+      "actor_id": "alarm_clock",
+      "display_name": "Broken Alarm Clock",
+      "role": "old alarm clock afraid of being replaced",
+      "fixed_markers": ["paper dial", "crooked black numbers", "dented bells"],
+      "forbidden_drift": ["digital screen", "smartwatch shape", "clean modern body"],
+      "motion_signature": "jittery hops; bell trembles before speaking"
+    }
+  ]
+}

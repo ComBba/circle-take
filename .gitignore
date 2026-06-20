@@ -1,0 +1,28 @@
+# secrets
+.env
+.env.local
+
+# python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+backend/circle_take.db
+
+# generated artifacts (videos/keyframes go to OSS, not git)
+artifacts/
+*.mp4
+*.mov
+*.tmp
+
+# node / next
+node_modules/
+.next/
+out/
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/

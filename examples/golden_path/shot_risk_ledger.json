@@ -1,0 +1,14 @@
+{
+  "risks": [
+    {"shot_id": "S01", "risk_level": "medium", "route": "t2v_or_r2v"},
+    {
+      "shot_id": "S02",
+      "risk_level": "high",
+      "risk_reasons": ["two actors interacting", "tail occludes prop", "red ribbon may disappear"],
+      "mitigation": ["medium shot", "clear side lighting", "explicit fixed marker instruction"],
+      "route": "r2v"
+    },
+    {"shot_id": "S03", "risk_level": "medium", "route": "i2v_or_r2v"},
+    {"shot_id": "S04", "risk_level": "low", "route": "t2v"}
+  ]
+}

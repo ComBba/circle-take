@@ -1,0 +1,12 @@
+{
+  "episode_id": "ep01",
+  "title": "The Last Alarm",
+  "beats": {
+    "hook": "Alarm Clock finds a smartwatch ad.",
+    "conflict": "Luna hides the ad under her tail.",
+    "reversal": "Alarm Clock decides to ring one last time.",
+    "button": "Worker says, five more minutes."
+  },
+  "tone": "comic melancholy",
+  "runtime_seconds": 15
+}
