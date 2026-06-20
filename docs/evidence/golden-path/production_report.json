@@ -1,0 +1,224 @@
+{
+  "brief": {
+    "title": "The Last Alarm",
+    "logline": "A broken alarm clock discovers it will be replaced tomorrow.",
+    "cast": [
+      "Luna, a jealous black cat",
+      "Broken Alarm Clock",
+      "Tired Office Worker"
+    ],
+    "style_contract_id": "clay_stop_motion_mvp"
+  },
+  "contracts": {
+    "actors": {
+      "actors": [
+        {
+          "actor_id": "luna_black_cat",
+          "display_name": "Luna",
+          "role": "Luna, a jealous black cat",
+          "fixed_markers": [
+            "Sleek black needle-felted fur",
+            "Bright yellow glass bead eyes",
+            "Distinct white chest patch shaped like a crescent moon",
+            "Frayed red yarn collar"
+          ],
+          "forbidden_drift": [
+            "Must not look like a generic mass-produced plush toy",
+            "Must not exhibit anthropomorphic human facial expressions",
+            "Must not lose the crescent moon chest patch",
+            "Fur texture must remain matte, never shiny or plastic-like"
+          ],
+          "motion_signature": "Fluid, low-to-the-ground stalking movements, sudden twitchy head tilts, slow deliberate tail swishes, and rigid, unblinking posture when observing the clock."
+        },
+        {
+          "actor_id": "broken_alarm_clock",
+          "display_name": "The Broken Alarm Clock",
+          "role": "Broken Alarm Clock",
+          "fixed_markers": [
+            "Retro 1950s twin-bell design",
+            "Tarnished brass finish with visible deep scratches",
+            "Cracked glass face over the dial",
+            "Single bent bell on the left side",
+            "Analog hands frozen permanently at 6:59"
+          ],
+          "forbidden_drift": [
+            "Must not grow physical arms or legs to become fully anthropomorphic",
+            "Must not lose the tarnished and scratched texture",
+            "The cracked glass must remain visible in all camera angles",
+            "Must not appear brand new, polished, or shiny"
+          ],
+          "motion_signature": "Subtle inanimate object animation: slight high-frequency vibrations when panicking, slow dragging across the nightstand via hidden rigging, sudden jerky twitching of the bells, and a slow, heavy drooping forward when feeling sad."
+        },
+        {
+          "actor_id": "tired_office_worker",
+          "display_name": "Arthur",
+          "role": "Tired Office Worker",
+          "fixed_markers": [
+            "Permanently slumped posture",
+            "Oversized grey knit cardigan with a missing middle button",
+            "Deep dark circles painted under the puppet's eyes",
+            "Messy, asymmetrical brown hair",
+            "Holding a chipped ceramic mug of cold coffee"
+          ],
+          "forbidden_drift": [
+            "Must not stand up perfectly straight or exhibit good posture",
+            "Must not look well-rested, energetic, or alert",
+            "Cardigan must remain oversized, rumpled, and unbuttoned",
+            "Facial expression must not shift into a wide, cheerful smile"
+          ],
+          "motion_signature": "Heavy, sluggish, frame-by-frame dragging of feet, slow rubbing of the temples, micro-movements of exhaustion like deep chest sighs that raise the shoulders slightly, and very slow, heavy blinking."
+        }
+      ]
+    },
+    "style": {
+      "style_id": "clay_stop_motion_mvp",
+      "rules": [
+        "All characters and set pieces must exhibit matte plasticine or clay textures with visible thumbprints, tool marks, or surface imperfections.",
+        "Animation must simulate physical stop-motion at 12 to 15 frames per second, featuring natural frame jitter and strictly zero digital motion blur.",
+        "Lighting must mimic physical miniature set lamps, producing hard, directional shadows with sharp falloff and no global illumination or ambient occlusion.",
+        "Environments must read as tactile miniature dioramas, utilizing physical craft materials like painted wood, fabric, or textured paper for backgrounds.",
+        "Character movement must reflect armatured clay physics, showing visible joint displacement or clay stretching at the neck, elbows, and knees rather than fluid mesh deformation.",
+        "Camera operation must mimic mechanical stop-motion rigs, utilizing only locked-off static shots or rigid, incremental pan and tilt movements without smooth digital easing."
+      ]
+    },
+    "story": {
+      "title": "The Last Alarm",
+      "beats": {
+        "hook": "The Tired Office Worker sets a glowing smartphone alarm; the broken, dusty alarm clock realizes it's being replaced.",
+        "conflict": "Desperate to keep its job, the broken clock tries to ring its jammed bell, but only succeeds in waking Luna the jealous black cat.",
+        "reversal": "Luna swats the phone off the nightstand, shattering it\u2014but the worker just unboxes a brand new, louder physical alarm clock.",
+        "button": "The broken clock smiles, unplugs itself, and happily rolls into the trash can, leaving Luna to glare at the fresh target."
+      },
+      "tone": "Quirky dark comedy",
+      "runtime_seconds": 15,
+      "episode_id": null
+    }
+  },
+  "storyboard": {
+    "shots": [
+      {
+        "shot_id": "S01",
+        "action": "A tired office worker's finger taps a glowing smartphone screen to set an alarm. The camera pans to a dusty, broken alarm clock on the nightstand, whose cracked glass face shows a sad, realizing expression as it watches the phone.",
+        "time": "0-4s"
+      },
+      {
+        "shot_id": "S02",
+        "action": "Desperate, the broken clock strains and vibrates, trying to ring its jammed bell. It only manages a pathetic metallic clink. The noise wakes Luna, a jealous black cat, who opens one glowing yellow eye in annoyance.",
+        "time": "4-8s"
+      },
+      {
+        "shot_id": "S03",
+        "action": "Luna aggressively swats the smartphone off the nightstand, shattering it on the floor. The worker sighs in defeat, then reaches into a cardboard box and pulls out a massive, brand-new, aggressively loud physical alarm clock.",
+        "time": "8-12s"
+      },
+      {
+        "shot_id": "S04",
+        "action": "Accepting its fate, the broken clock smiles warmly, unplugs its own frayed cord, and happily rolls itself into the nearby trash can. Luna sits on the bed, glaring menacingly at the giant new clock as her fresh target.",
+        "time": "12-15s"
+      }
+    ]
+  },
+  "shot_risk": {
+    "risks": [
+      {
+        "shot_id": "S01",
+        "risk_level": "medium",
+        "route": "Identity & Prop Consistency",
+        "risk_reasons": [
+          "Animating a 'sad, realizing expression' on a rigid prop with a 'cracked glass face' risks morphing the glass or altering the 1950s design.",
+          "Arthur's puppet-like markers (painted dark circles, asymmetrical hair) must be strictly maintained during the panning camera movement."
+        ],
+        "mitigation": [
+          "Use subtle lighting shifts and slight warping of the cracked glass to imply the expression rather than full facial morphing.",
+          "Ensure Arthur's puppet-like features are clearly lit and in focus during the initial framing before the pan."
+        ]
+      },
+      {
+        "shot_id": "S02",
+        "risk_level": "medium",
+        "route": "Texture & Prop Physics",
+        "risk_reasons": [
+          "The clock 'strains and vibrates', which may cause the AI to lose the 'tarnished brass' texture or accidentally straighten the 'single bent bell'.",
+          "Luna's 'needle-felted fur' texture is highly specific and prone to shifting or reverting to standard realistic fur when the cat moves."
+        ],
+        "mitigation": [
+          "Restrict the clock's vibration to a subtle, localized shake to preserve the bent bell and deep scratches.",
+          "Use strong, consistent directional lighting to highlight the needle-felted texture of Luna's fur, avoiding motion blur that obscures the specific material."
+        ]
+      },
+      {
+        "shot_id": "S03",
+        "risk_level": "low",
+        "route": "Action & Identity Tracking",
+        "risk_reasons": [
+          "Dynamic motion (swatting the phone) might cause Luna to lose her specific markers, particularly the 'distinct white chest patch shaped like a crescent moon'.",
+          "Introducing a 'massive, brand-new' clock risks confusing the visual style or overshadowing the established aesthetic."
+        ],
+        "mitigation": [
+          "Frame the swatting action tightly on Luna's paw and the phone to minimize full-body deformation and keep her markers intact.",
+          "Ensure the new clock has a distinct, contrasting design (e.g., sleek modern plastic) so it doesn't visually merge with the tarnished brass of the old clock."
+        ]
+      },
+      {
+        "shot_id": "S04",
+        "risk_level": "high",
+        "route": "Prop Logic & Physical Impossibility",
+        "risk_reasons": [
+          "The action 'unplugs its own frayed cord' contradicts the fixed marker of a '1950s twin-bell design' (typically mechanical/wind-up), creating a prop continuity error.",
+          "A twin-bell clock 'rolling itself' is physically awkward due to the bells on top; the AI will likely morph the clock's shape to make it roll, destroying its structural identity."
+        ],
+        "mitigation": [
+          "Add 'frayed power cord' to the clock's fixed markers to resolve the mechanical/electric contradiction.",
+          "Change the action from 'rolls itself' to 'hops' or 'waddles' to maintain the clock's rigid, flat-bottomed structural integrity while moving to the trash can."
+        ]
+      }
+    ]
+  },
+  "continuity_verdict": {
+    "shot_id": "S02",
+    "verdict": "fail",
+    "violations": [
+      {
+        "type": "actor_drift",
+        "actor": "Luna",
+        "detail": "Luna is missing the required bright yellow glass bead eyes, the distinct white chest patch shaped like a crescent moon, and the frayed red yarn collar. The texture is smooth clay rather than needle-felted fur."
+      },
+      {
+        "type": "missing_actor",
+        "actor": "The Broken Alarm Clock",
+        "detail": "The Broken Alarm Clock is not present in the frame."
+      },
+      {
+        "type": "missing_actor",
+        "actor": "Arthur",
+        "detail": "Arthur is not present in the frame."
+      }
+    ],
+    "repair_action": "Regenerate frame to include Luna with all fixed markers (yellow glass bead eyes, white crescent moon chest patch, frayed red yarn collar, needle-felted texture). Include The Broken Alarm Clock and Arthur with their respective fixed markers.",
+    "memory_policy": "Retain all fixed markers and forbid drifts for Luna, The Broken Alarm Clock, and Arthur. Ensure style rules (matte plasticine/clay textures, stop-motion animation, hard shadows, tactile miniature dioramas) are strictly applied to all present elements."
+  },
+  "reshoot_spell": "RESHOOT S02 ONLY.\n- Fix: Luna is missing the required bright yellow glass bead eyes, the distinct white chest patch shaped like a crescent moon, and the frayed red yarn collar. The texture is smooth clay rather than needle-felted fur.\n- Fix: The Broken Alarm Clock is not present in the frame.\n- Fix: Arthur is not present in the frame.\nKeep Luna: Sleek black needle-felted fur, Bright yellow glass bead eyes, Distinct white chest patch shaped like a crescent moon, Frayed red yarn collar.\nKeep The Broken Alarm Clock: Retro 1950s twin-bell design, Tarnished brass finish with visible deep scratches, Cracked glass face over the dial, Single bent bell on the left side, Analog hands frozen permanently at 6:59.\nKeep Arthur: Permanently slumped posture, Oversized grey knit cardigan with a missing middle button, Deep dark circles painted under the puppet's eyes, Messy, asymmetrical brown hair, Holding a chipped ceramic mug of cold coffee.\nPreserve camera angle and action. Do not alter any shot other than S02.",
+  "anchor_gate": {
+    "shot_id": "S02_take_two",
+    "identity_score": 15,
+    "style_score": 85,
+    "prop_score": 10,
+    "anchor_status": "quarantine"
+  },
+  "red_thread_memory": {
+    "story_memory": {
+      "new_fact": "Luna hid the smartwatch ad",
+      "relationship_change": "Alarm Clock distrusts Luna",
+      "open_thread": "The smartwatch may arrive tomorrow"
+    },
+    "visual_memory": {
+      "approved_anchor": "S02_take_two_keyframe.png",
+      "known_failure": "Luna ribbon disappeared in Take 1",
+      "future_constraint": "Always preserve Luna's red ribbon"
+    },
+    "auto_greenlight": {
+      "episode_2_title": "The Delivery Box",
+      "cold_open": "A tiny package appears on the desk before sunrise."
+    }
+  }
+}

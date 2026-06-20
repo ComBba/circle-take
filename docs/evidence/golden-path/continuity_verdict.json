@@ -1,0 +1,23 @@
+{
+  "shot_id": "S02",
+  "verdict": "fail",
+  "violations": [
+    {
+      "type": "actor_drift",
+      "actor": "Luna",
+      "detail": "Luna is missing the required bright yellow glass bead eyes, the distinct white chest patch shaped like a crescent moon, and the frayed red yarn collar. The texture is smooth clay rather than needle-felted fur."
+    },
+    {
+      "type": "missing_actor",
+      "actor": "The Broken Alarm Clock",
+      "detail": "The Broken Alarm Clock is not present in the frame."
+    },
+    {
+      "type": "missing_actor",
+      "actor": "Arthur",
+      "detail": "Arthur is not present in the frame."
+    }
+  ],
+  "repair_action": "Regenerate frame to include Luna with all fixed markers (yellow glass bead eyes, white crescent moon chest patch, frayed red yarn collar, needle-felted texture). Include The Broken Alarm Clock and Arthur with their respective fixed markers.",
+  "memory_policy": "Retain all fixed markers and forbid drifts for Luna, The Broken Alarm Clock, and Arthur. Ensure style rules (matte plasticine/clay textures, stop-motion animation, hard shadows, tactile miniature dioramas) are strictly applied to all present elements."
+}
