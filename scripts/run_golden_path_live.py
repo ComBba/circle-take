@@ -25,16 +25,17 @@ load_dotenv(ROOT / ".env.local")  # load creds BEFORE importing app modules
 sys.path.insert(0, str(ROOT / "backend"))
 
 import httpx  # noqa: E402
-
 from app import (  # noqa: E402
     anchor_gate,
-    contracts,
     continuity_court,
-    memory as memory_mod,
+    contracts,
     oss_storage,
     reshoot_spell,
     storyboard,
     video_tasks,
+)
+from app import (
+    memory as memory_mod,
 )
 
 STAGE = sys.argv[1] if len(sys.argv) > 1 else "all"

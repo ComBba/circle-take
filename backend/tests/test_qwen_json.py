@@ -1,7 +1,6 @@
 import pytest
-from pydantic import BaseModel
-
 from app import qwen_client
+from pydantic import BaseModel
 
 
 class Demo(BaseModel):

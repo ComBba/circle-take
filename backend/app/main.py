@@ -124,7 +124,10 @@ def generate(eid: str, store: Store = Depends(get_store)):
 @app.post("/api/episodes/{eid}/review", response_model=EpisodeState)
 def review(eid: str, store: Store = Depends(get_store)):
     """Continuity Court verdict. Live mode (Phase 2.3) sends a real frame to Qwen vision."""
-    store.put_artifact(eid, "continuity_verdict", _resolve_json("continuity_verdict_before.json", "continuity_verdict.json"))
+    store.put_artifact(
+        eid, "continuity_verdict",
+        _resolve_json("continuity_verdict_before.json", "continuity_verdict.json"),
+    )
     _advance_to(store, eid, EpisodeStatus.CUT_REQUIRED)
     return _state(store, eid)
 
