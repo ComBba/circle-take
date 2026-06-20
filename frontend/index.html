@@ -122,7 +122,9 @@ async function run(){
     stage('contracts','📜 Contracts',gen.state,`<div class="grid">${actors}</div><div class="note">Style: ${a.style_contract.style_id}</div>`);
     const shots=(a.shot_risk_ledger.risks||[]).map(s=>`<div class="card ${s.risk_level==='high'?'high':''}"><div class="id">${s.shot_id}</div><span class="risk ${s.risk_level}">${s.risk_level}</span><div class="note">${s.route||''}</div></div>`).join('');
     stage('slate','🎞️ Storyboard Slate + Shot Risk',gen.state,`<div class="grid">${shots}</div>`);
-    stage('take1','🎥 Take 1',gen.state,`<div class="frame bad"><div class="lbl">Shot 2 · generated</div><div class="big">🐈‍⬛ <span class="miss">red ribbon</span></div><div class="note">${a.take_1.pending?('⏳ '+a.take_1.pending):'live'}</div></div>`);
+    stage('take1','🎥 Take 1',gen.state, a.take_1.source==='live'
+      ? `<video controls preload="metadata" style="max-width:360px;border-radius:10px" src="${apiInput.value}/api/media/take1_S02.mp4"></video><div class="note">Real Wan 2.7 generation (Shot 2)</div>`
+      : `<div class="frame bad"><div class="lbl">Shot 2 · generated</div><div class="big">🐈‍⬛ <span class="miss">red ribbon</span></div><div class="note">${a.take_1.pending?('⏳ '+a.take_1.pending):'live'}</div></div>`);
 
     renderTrack(2);
     const rev = await call('POST',`/api/episodes/${id}/review`);
@@ -132,10 +134,14 @@ async function run(){
     renderTrack(3);
     const rs = await call('POST',`/api/episodes/${id}/reshoot`);
     stage('spell','🪄 Reshoot Spell (Shot 2 only)',rs.state,`<pre>${rs.artifacts.reshoot_spell}</pre>`);
-    stage('take2','🔁 Take Two Reveal',rs.state,
-      `<div class="ba"><div class="frame bad"><div class="lbl">Before</div><div class="big">🐈‍⬛ <span class="miss">no ribbon</span> · 🔢</div></div>`+
-      `<div class="frame good"><div class="lbl">After</div><div class="big">🐈‍⬛<span class="ribbon-on">🎀</span> · 🕰️</div></div></div>`+
-      `<div class="note">Only Shot 2 was reshot — Shots 1/3/4 untouched.</div>`);
+    const t2live = rs.artifacts.take_2 && rs.artifacts.take_2.source==='live';
+    stage('take2','🔁 Take Two Reveal',rs.state, t2live
+      ? `<div class="ba"><div class="frame bad"><div class="lbl">Before (Take 1)</div><video controls preload="metadata" style="max-width:100%;border-radius:8px" src="${apiInput.value}/api/media/take1_S02.mp4"></video></div>`+
+        `<div class="frame good"><div class="lbl">After (Take Two)</div><video controls preload="metadata" style="max-width:100%;border-radius:8px" src="${apiInput.value}/api/media/take2_S02.mp4"></video></div></div>`+
+        `<div class="note">Real Wan 2.7 — only Shot 2 was reshot.</div>`
+      : `<div class="ba"><div class="frame bad"><div class="lbl">Before</div><div class="big">🐈‍⬛ <span class="miss">no ribbon</span> · 🔢</div></div>`+
+        `<div class="frame good"><div class="lbl">After</div><div class="big">🐈‍⬛<span class="ribbon-on">🎀</span> · 🕰️</div></div></div>`+
+        `<div class="note">Only Shot 2 was reshot — Shots 1/3/4 untouched.</div>`);
 
     renderTrack(4);
     const mem = await call('POST',`/api/episodes/${id}/memory`);

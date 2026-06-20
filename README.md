@@ -1,5 +1,9 @@
 # Circle Take
 
+[![CI](https://github.com/ComBba/circle-take/actions/workflows/ci.yml/badge.svg)](https://github.com/ComBba/circle-take/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)
+
 **Bad takes don't make the cut.**
 
 Circle Take is a self-correcting production loop for generated episodes. It catches broken continuity, reshoots only the failed shot, and remembers only approved takes. Powered by Qwen Cloud.
