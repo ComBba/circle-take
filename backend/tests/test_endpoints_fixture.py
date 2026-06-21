@@ -54,3 +54,25 @@ def test_ui_served():
     assert r.status_code == 200
     assert "Circle Take" in r.text
     app.dependency_overrides.clear()
+
+
+def test_report_unknown_404():
+    c = _client()
+    assert c.get("/api/episodes/nope/report").status_code == 404
+    app.dependency_overrides.clear()
+
+
+def test_generate_unknown_404():
+    c = _client()
+    assert c.post("/api/episodes/nope/generate").status_code == 404
+    app.dependency_overrides.clear()
+
+
+def test_backward_transition_rejected_409():
+    c = _client()
+    eid = c.post("/api/episodes", json={"title": "X"}).json()["episode_id"]
+    for s in ("generate", "review", "reshoot", "memory"):
+        c.post(f"/api/episodes/{eid}/{s}")
+    # /review targets CUT_REQUIRED, earlier than AUTO_GREENLIT -> backward -> 409
+    assert c.post(f"/api/episodes/{eid}/review").status_code == 409
+    app.dependency_overrides.clear()
