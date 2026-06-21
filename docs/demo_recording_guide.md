@@ -11,7 +11,12 @@ docker compose up --build          # or run backend on :8000 (APP_ENV=live, .env
 node scripts/demo/capture.mjs      # stills of every golden-path stage -> build/shots
 node scripts/demo/capture_motion.mjs  # real motion (3D hero, scroll montage) -> build/motion
 python3 scripts/demo/build_demo.py    # TTS + ffmpeg (Ken Burns + crossfades) -> artifacts/demo/
+python3 scripts/demo/qc.py            # objective gate: 1080p / <=180s / -14 LUFS / no black
 ```
+
+Audio is loudness-normalized to **-14 LUFS / -1 dBTP** (2-pass loudnorm) and video is CRF 16
+— conventions adopted from `Two-Weeks-Team/demo-forge`'s guardrails. `qc.py` exits non-zero on
+any failed check (resolution, duration, loudness, true-peak, mid-roll black).
 
 Output: `artifacts/demo/circle-take-demo.mp4` (~165 s, cinematic). Upload per `docs/demo_youtube_kit.md`.
 Requires: ffmpeg, Node + a Chrome/Chromium. **Narration uses Qwen Cloud TTS** (`qwen3-tts-flash`)
