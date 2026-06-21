@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import textwrap
@@ -386,12 +387,36 @@ def assemble(segs: list, durs: list, xfs: list) -> None:
     achain.append(f"{prevA}afade=t=in:st=0:d=0.4,afade=t=out:st={total - 0.6:.2f}:d=0.6[aout]")
 
     fc = ";".join(vchain + achain)
+    raw = WORK / "assembled_raw.mp4"
     run([
         "ffmpeg", "-y", *inputs, "-filter_complex", fc,
         "-map", "[vout]", "-map", "[aout]",
-        "-c:v", "libx264", "-preset", "slow", "-crf", "19", "-pix_fmt", "yuv420p",
+        "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
         "-profile:v", "high", "-r", FPS,
-        "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(OUT),
+        "-c:a", "aac", "-b:a", "192k", str(raw),
+    ])
+    # demo-forge learning: normalize the full track to -14 LUFS / -1 dBTP (broadcast/
+    # YouTube standard) with a 2-pass loudnorm; video is encoded once and copied.
+    loudnorm_2pass(raw, OUT)
+
+
+def loudnorm_2pass(infile: Path, outfile: Path, lufs: float = -14.0, tp: float = -1.0) -> None:
+    p = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-nostdin", "-i", str(infile),
+         "-af", f"loudnorm=I={lufs}:TP={tp}:LRA=11:print_format=json", "-f", "null", "-"],
+        capture_output=True, text=True)
+    m = re.search(r'\{[^{}]*"input_i"[^{}]*\}', p.stderr)
+    if m:
+        d = json.loads(m.group())
+        af = (f"loudnorm=I={lufs}:TP={tp}:LRA=11:measured_I={d['input_i']}:"
+              f"measured_TP={d['input_tp']}:measured_LRA={d['input_lra']}:"
+              f"measured_thresh={d['input_thresh']}:offset={d['target_offset']}:linear=true")
+    else:
+        af = f"loudnorm=I={lufs}:TP={tp}:LRA=11"
+    run([
+        "ffmpeg", "-y", "-i", str(infile), "-c:v", "copy",
+        "-af", af + ",aresample=48000", "-ar", "48000", "-ac", "2",
+        "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(outfile),
     ])
 
 
