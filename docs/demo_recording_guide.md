@@ -1,5 +1,23 @@
 # Demo Recording Runbook (&lt; 3 minutes)
 
+## Automated path (recommended — no human, no mic, no OBS)
+
+The video is produced end-to-end by scripts. Every frame is real (live-UI screenshots +
+the real Wan clips), narration is macOS `say` TTS, captions/cards are burnt in by ffmpeg.
+
+```bash
+cd circle-take
+docker compose up --build        # or run backend on :8000 (APP_ENV=live, .env.local present)
+node scripts/demo/capture.mjs    # screenshots every golden-path stage -> scripts/demo/build/shots
+python3 scripts/demo/build_demo.py   # TTS + ffmpeg -> artifacts/demo/circle-take-demo.mp4
+```
+
+Output: `artifacts/demo/circle-take-demo.mp4` (~108 s). Then upload per `docs/demo_youtube_kit.md`.
+Requires: ffmpeg, Node + a Chrome/Chromium, macOS `say`. Story arc = **live/honest**
+(Anchor Gate quarantines Take 2 at identity 15/100 — that refusal is the point).
+
+## Manual path (human voiceover, OBS)
+
 Everything is built and live-verified. This maps the 3-minute script to the **actual live UI**
 so you can record in one pass. Pairs with `docs/demo_script.md` (narration).
 

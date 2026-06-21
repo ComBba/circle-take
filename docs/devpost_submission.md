@@ -95,7 +95,11 @@ https://github.com/ComBba/circle-take
 
 ## Demo Video URL
 
-[FILL: public YouTube/Vimeo/Youku URL, under 3 minutes — record per docs/demo_script.md]
+Video is **already produced**: `artifacts/demo/circle-take-demo.mp4` (1080p, ~108 s, < 3:00).
+Upload it to YouTube/Vimeo/Youku per `docs/demo_youtube_kit.md` (title/description/tags ready),
+then replace this line with the watch URL.
+
+[FILL: paste the public YouTube/Vimeo/Youku URL here after upload]
 
 ## Live Demo / Testing URL
 
