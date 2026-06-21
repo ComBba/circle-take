@@ -14,7 +14,9 @@ python3 scripts/demo/build_demo.py    # TTS + ffmpeg (Ken Burns + crossfades) ->
 ```
 
 Output: `artifacts/demo/circle-take-demo.mp4` (~165 s, cinematic). Upload per `docs/demo_youtube_kit.md`.
-Requires: ffmpeg, Node + a Chrome/Chromium, macOS `say`. Story arc = **live/honest**
+Requires: ffmpeg, Node + a Chrome/Chromium. **Narration uses Qwen Cloud TTS** (`qwen3-tts-flash`)
+— needs `QWEN_API_KEY` (read from `.env.local`); falls back to macOS `say` if absent.
+Override voice/model via `QWEN_TTS_VOICE` / `QWEN_TTS_MODEL`. Story arc = **live/honest**
 (Anchor Gate quarantines Take 2 at identity 15/100 — that refusal is the point).
 
 ## Manual path (human voiceover, OBS)
