@@ -17,6 +17,9 @@ artifacts/
 *.mov
 *.tmp
 
+# demo build outputs (regenerable: capture.mjs + build_demo.py)
+scripts/demo/build/
+
 # node / next
 node_modules/
 .next/
