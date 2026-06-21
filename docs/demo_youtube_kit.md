@@ -5,14 +5,17 @@ Your only remaining steps are **upload + paste the URL into Devpost**.
 
 ## The file
 
-- **`artifacts/demo/circle-take-demo.mp4`** — 1920×1080, 30 fps, AAC stereo, ~108 s (< 3:00 cap).
+- **`artifacts/demo/circle-take-demo.mp4`** — 1920×1080, 30 fps, AAC stereo, ~165 s (< 3:00 cap).
 - Thumbnail: **`docs/screenshots/demo_thumbnail.png`** (1280×720).
-- 100% real: live UI screenshots + the real Wan clips (`take1/take2_S02.mp4`) + the real
-  Qwen `VERDICT: FAIL` + the honest Anchor Gate `identity 15/100 → QUARANTINE`.
+- Cinematic cut, not a slideshow: real on-screen motion (Three.js hero rotating, the
+  autonomous-roll scroll montage, the two real Wan clips), Ken Burns drift on detail
+  frames, crossfades on every cut.
+- 100% real: live UI + the real Wan clips (`take1/take2_S02.mp4`) + the real Qwen
+  `VERDICT: FAIL` + the honest Anchor Gate `identity 15/100 → QUARANTINE`.
   Narration is macOS `say` (Samantha) — no microphone, no copyrighted audio.
 
 To regenerate (after any UI change): start the server, then
-`node scripts/demo/capture.mjs && python3 scripts/demo/build_demo.py`.
+`node scripts/demo/capture.mjs && node scripts/demo/capture_motion.mjs && python3 scripts/demo/build_demo.py`.
 
 ## Upload (YouTube — recommended)
 
