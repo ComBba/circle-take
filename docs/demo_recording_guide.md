@@ -10,6 +10,7 @@ cd circle-take
 docker compose up --build          # or run backend on :8000 (APP_ENV=live, .env.local present)
 node scripts/demo/capture.mjs      # stills of every golden-path stage -> build/shots
 node scripts/demo/capture_motion.mjs  # real motion (3D hero, scroll montage) -> build/motion
+node scripts/demo/capture_live.mjs    # real operation: interactive click + live-run terminal
 python3 scripts/demo/build_demo.py    # TTS + ffmpeg (Ken Burns + crossfades) -> artifacts/demo/
 python3 scripts/demo/qc.py            # objective gate: 1080p / <=180s / -14 LUFS / no black
 ```
