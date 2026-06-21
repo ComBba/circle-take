@@ -114,17 +114,20 @@ BEATS = [
          vo="The take is not trusted. It is judged. Qwen's vision model returns a "
             "real verdict. Fail. Actor drift on Luna. The broken alarm clock, "
             "missing. Arthur, missing."),
-    dict(id="b04", kind="motion", asset=MOTION / "hero.webm", dwell=8.0,
-         caption="Circle Take — a self-correcting production loop.",
-         vo="This is Circle Take. A self correcting production loop for generated "
-            "episodes."),
-    dict(id="b04i", kind="motion", asset=MOTION / "interactive.webm", dwell=8.5,
+    # The clear "wow" thesis: problem (drift, costly re-rolls) -> the one-line fix.
+    dict(id="b03b", kind="statement", dwell=8.5,
+         subline="A generated episode drifts — and re-rolling the whole thing is slow and costly.",
+         headline="Reshoot the shot.\nNot the show.",
+         caption="",
+         vo="So here is the idea. When a generated episode drifts, you should not "
+            "re-roll the whole show. Reshoot the shot. Not the show."),
+    # The interactive clip already shows the hero AND the cue cards, so the separate
+    # hero beat and the scroll montage were redundant (the repeat you saw ~40s/47s).
+    dict(id="b04i", kind="motion", asset=MOTION / "interactive.webm", dwell=11.0,
          caption="One click — the whole loop runs.",
-         vo="You press one button, and Circle Take runs the whole loop, live."),
-    dict(id="b05", kind="motion", asset=MOTION / "montage.webm", dwell=12.0,
-         caption="Catch. Reshoot only what failed. Remember only what's approved.",
-         vo="Catch broken continuity. Reshoot only the failed shot. Remember only "
-            "approved takes."),
+         vo="This is Circle Take. A self correcting production loop. You press one "
+            "button, and it catches broken continuity, reshoots only the failed shot, "
+            "and remembers only approved takes."),
     dict(id="b05t", kind="motion", asset=MOTION / "terminal.webm", dwell=10.0,
          caption="Live Qwen Cloud + Alibaba OSS — no mockups.",
          vo="And none of it is staged. Every stage is a live Qwen Cloud call, with "
@@ -156,7 +159,7 @@ BEATS = [
          caption="Wan reshoots — only shot two.", dwell=4.5,
          vo="Wan reshoots. But only shot two."),
     dict(id="b12", kind="kb", asset=SHOTS / "09_scene.png", dir="in",
-         caption="Identity 15/100 → QUARANTINE.",
+         caption="It quarantined its OWN reshoot — 15/100.",
          vo="Take two faces the anchor gate. And here is the honest part. Identity "
             "scored fifteen out of a hundred. The reshoot still missed Luna. So the "
             "gate quarantines it. Circle Take refuses to greenlight an anchor that "
@@ -316,6 +319,28 @@ def build_segment(beat: dict) -> tuple[Path, float]:
             "-c:v", "libx264", "-preset", "medium", "-pix_fmt", "yuv420p", "-r", FPS,
             "-c:a", "aac", "-ar", "48000", "-ac", "2", seg,
         ])
+    elif beat["kind"] == "statement":
+        # The clear "wow" thesis card: a small problem line + a big bold tagline.
+        (WORK / f"{bid}_h.txt").write_text(beat["headline"], encoding="utf-8")
+        (WORK / f"{bid}_s.txt").write_text(beat["subline"], encoding="utf-8")
+        hf = str(WORK / f"{bid}_h.txt").replace(":", r"\:")
+        sf = str(WORK / f"{bid}_s.txt").replace(":", r"\:")
+        bf = BOLD.replace(":", r"\:")
+        ff = FONT.replace(":", r"\:")
+        vf = (
+            f"drawtext=textfile='{sf}':fontfile='{ff}':fontsize=44:fontcolor=0x8a8f98:"
+            f"x=(w-text_w)/2:y=h/2-250,"
+            f"drawtext=textfile='{hf}':fontfile='{bf}':fontsize=132:fontcolor=0xf3ecdf:"
+            f"line_spacing=20:x=(w-text_w)/2:y=h/2-130,"
+            f"drawbox=x=(w-300)/2:y=h/2+220:w=300:h=7:color=0xe6324b:t=fill,fps={FPS}"
+        )
+        run([
+            "ffmpeg", "-y", "-f", "lavfi", "-t", seg_dur,
+            "-i", f"color=c={BG}:s={W}x{H}:r={FPS}", "-i", wav,
+            "-vf", vf, "-af", "apad", "-map", "0:v", "-map", "1:a", "-t", seg_dur,
+            "-c:v", "libx264", "-preset", "medium", "-pix_fmt", "yuv420p", "-r", FPS,
+            "-c:a", "aac", "-ar", "48000", "-ac", "2", seg,
+        ])
     elif beat["kind"] == "end":
         ff = FONT.replace(":", r"\:")
         bf = BOLD.replace(":", r"\:")
@@ -429,7 +454,7 @@ def loudnorm_2pass(infile: Path, outfile: Path, lufs: float = -14.0, tp: float =
 
 def main() -> None:
     for b in BEATS:
-        if not Path(b["asset"]).exists():
+        if "asset" in b and not Path(b["asset"]).exists():
             raise SystemExit(f"missing asset: {b['asset']}")
     print("Building cinematic segments (TTS + ffmpeg motion/Ken Burns):")
     segs, durs = [], []
