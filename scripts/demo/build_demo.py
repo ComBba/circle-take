@@ -84,12 +84,16 @@ BOLD = next(
 #   kind "kb"     -> still with Ken Burns (dir: in|out)
 #   kind "end"    -> motion hero bg, dimmed, with title card
 BEATS = [
-    dict(id="b01", kind="motion", asset=CLIPS / "take1_S02.mp4",
+    dict(id="b01", kind="motion", asset=CLIPS / "take1_S02.mp4", ss=0.0, to=5.0,
          caption="Take 1 — a generated shot.",
          vo="This is a generated episode. A clay micro drama. Meet Luna, a stop "
-            "motion cat. Roll Take 1. But watch closely. Her yellow bead eyes, her "
-            "crescent chest patch, her red collar. Already gone.",
-         floor=15.0),
+            "motion cat. Roll Take 1.",
+         floor=6.5),
+    dict(id="b01b", kind="kb", asset=CLIPS / "take1_frame.png", dir="in", full=True,
+         caption="Her markers — already gone.",
+         vo="But watch closely. Her yellow bead eyes. Her white crescent patch. Her "
+            "frayed red collar. Already gone.",
+         floor=8.0),
     dict(id="b02", kind="impact", asset=SHOTS / "05_scene.png",
          caption="It calls cut.",
          vo="Circle Take does not hide a bad take. It calls cut.", floor=5.5),
@@ -229,11 +233,13 @@ def caption_vf(caption: str, bid: str, size: int = 48) -> str:
     return ("," + caption_draw(caption, bid, size)) if caption else ""
 
 
-def kenburns_vf(direction: str, dur: float) -> str:
-    """Slow, centered Ken Burns zoom (no pan): card stays centered, text never clips.
+def kenburns_vf(direction: str, dur: float, full: bool = False) -> str:
+    """Slow, centered Ken Burns zoom (no pan): subject stays centered, text never clips.
 
     Uses zoompan the canonical way (d = total frames over a single supersampled
-    still) so the zoom actually accumulates frame-to-frame.
+    still) so the zoom actually accumulates frame-to-frame. full=True fills the
+    frame (for a photo / clip keyframe); otherwise the still is a UI card on the
+    dark background with generous margins.
     """
     n = max(int(round(dur * FPS)), 2)
     step = 0.085 / n  # reach ~1.085x by the end, regardless of beat length
@@ -241,9 +247,13 @@ def kenburns_vf(direction: str, dur: float) -> str:
         z = f"if(eq(on,0),1.085,max(zoom-{step:.6f},1.0))"
     else:                    # slow push-in
         z = f"min(zoom+{step:.6f},1.085)"
+    if full:
+        base = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1"
+    else:
+        base = (f"scale=1480:800:force_original_aspect_ratio=decrease,"
+                f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color={BG},setsar=1")
     return (
-        f"scale=1480:800:force_original_aspect_ratio=decrease,"
-        f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color={BG},setsar=1,scale={W * 2}:{H * 2},"
+        f"{base},scale={W * 2}:{H * 2},"
         f"zoompan=z='{z}':d={n}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
         f"s={W}x{H}:fps={FPS}"
     )
@@ -258,7 +268,7 @@ def build_segment(beat: dict) -> tuple[Path, float]:
     cap = caption_vf(beat["caption"], bid)
 
     if beat["kind"] == "kb":
-        vf = f"{kenburns_vf(beat['dir'], seg_dur)}{cap}"
+        vf = f"{kenburns_vf(beat['dir'], seg_dur, beat.get('full', False))}{cap}"
         run([
             "ffmpeg", "-y", "-loop", "1", "-framerate", FPS, "-t", seg_dur,
             "-i", beat["asset"], "-i", wav,
