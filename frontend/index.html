@@ -42,7 +42,7 @@
   .sub{max-width:540px;color:var(--muted);margin:1.5rem auto 0;font-size:1.02rem;opacity:0;animation:fade .9s .7s forwards}
   .cta-row{margin-top:2.3rem;display:flex;gap:.9rem;flex-wrap:wrap;justify-content:center;opacity:0;animation:fade .9s .9s forwards}
   .btn{font-family:var(--body);font-weight:800;font-size:1.02rem;cursor:pointer;border:0;padding:.95rem 1.9rem;border-radius:2px;letter-spacing:.02em;transition:transform .15s,box-shadow .15s}
-  .btn.primary{background:var(--red);color:#fff}
+  .btn.primary{background:#c81e3a;color:#fff}  /* WCAG AA: 5.7:1 with #fff */
   .btn.primary:hover{transform:translateY(-2px);box-shadow:0 12px 34px -8px rgba(230,50,75,.6)}
   .btn.ghost{background:#0e0e12aa;color:var(--fg);border:1px solid var(--line)}
   .btn.ghost:hover{border-color:var(--amber);color:var(--amber)}
@@ -169,8 +169,15 @@
   In fixture mode the loop runs on golden-path artifacts (never presented as live output).
 </footer>
 
+<!-- Pin + integrity-check the Three.js module (import-map SRI; enforced on supporting browsers, gracefully ignored elsewhere). Google Fonts CSS is browser-dynamic so SRI is intentionally not applied; the page degrades to fallback fonts. -->
+<script type="importmap">
+{
+  "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js" },
+  "integrity": { "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js": "sha384-8FCZ1eVO6it4+pbec2aDtnTrwjWXZLJRC+MAGCIPDgsYnUrl/E0A2YlF8ioMKI/J" }
+}
+</script>
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js';
+import * as THREE from 'three';
 const cv=document.getElementById('three');
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 try{
