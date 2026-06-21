@@ -7,12 +7,13 @@ the real Wan clips), narration is macOS `say` TTS, captions/cards are burnt in b
 
 ```bash
 cd circle-take
-docker compose up --build        # or run backend on :8000 (APP_ENV=live, .env.local present)
-node scripts/demo/capture.mjs    # screenshots every golden-path stage -> scripts/demo/build/shots
-python3 scripts/demo/build_demo.py   # TTS + ffmpeg -> artifacts/demo/circle-take-demo.mp4
+docker compose up --build          # or run backend on :8000 (APP_ENV=live, .env.local present)
+node scripts/demo/capture.mjs      # stills of every golden-path stage -> build/shots
+node scripts/demo/capture_motion.mjs  # real motion (3D hero, scroll montage) -> build/motion
+python3 scripts/demo/build_demo.py    # TTS + ffmpeg (Ken Burns + crossfades) -> artifacts/demo/
 ```
 
-Output: `artifacts/demo/circle-take-demo.mp4` (~108 s). Then upload per `docs/demo_youtube_kit.md`.
+Output: `artifacts/demo/circle-take-demo.mp4` (~165 s, cinematic). Upload per `docs/demo_youtube_kit.md`.
 Requires: ffmpeg, Node + a Chrome/Chromium, macOS `say`. Story arc = **live/honest**
 (Anchor Gate quarantines Take 2 at identity 15/100 — that refusal is the point).
 
