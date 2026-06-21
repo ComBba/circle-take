@@ -118,10 +118,17 @@ BEATS = [
          caption="Circle Take — a self-correcting production loop.",
          vo="This is Circle Take. A self correcting production loop for generated "
             "episodes."),
+    dict(id="b04i", kind="motion", asset=MOTION / "interactive.webm", dwell=8.5,
+         caption="One click — the whole loop runs.",
+         vo="You press one button, and Circle Take runs the whole loop, live."),
     dict(id="b05", kind="motion", asset=MOTION / "montage.webm", dwell=12.0,
          caption="Catch. Reshoot only what failed. Remember only what's approved.",
          vo="Catch broken continuity. Reshoot only the failed shot. Remember only "
-            "approved takes. The whole pipeline runs itself."),
+            "approved takes."),
+    dict(id="b05t", kind="motion", asset=MOTION / "terminal.webm", dwell=10.0,
+         caption="Live Qwen Cloud + Alibaba OSS — no mockups.",
+         vo="And none of it is staged. Every stage is a live Qwen Cloud call, with "
+            "artifacts stored on Alibaba Cloud."),
     dict(id="b06", kind="kb", asset=SHOTS / "01_scene.png", dir="in",
          caption="It starts with a brief.",
          vo="It begins with a brief. A broken alarm clock learns it will be "
