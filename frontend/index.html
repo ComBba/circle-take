@@ -179,32 +179,40 @@ try{
   const scene=new THREE.Scene();
   const cam=new THREE.PerspectiveCamera(50,1,.1,100); cam.position.set(0,0,6);
   const g=new THREE.Group(); scene.add(g);
-  const N=16,R=2.5, AMBER=0xf0b24a,RED=0xe6324b,CHALK=0xf3ecdf, halos=[];
+  // "circle of takes": a clean flat ring of nodes; group tilt gives the reel look.
+  const N=12, R=2.05, AMBER=0xf0b24a, AMBER_DIM=0x8a6a2e, RED=0xe6324b, CHALK=0xf3ecdf, GREEN=0x5bd08a;
+  const BAD=4, OK=9, pts=[], halos=[];
   for(let i=0;i<N;i++){
-    const ang=(i/N)*Math.PI*2, bad=(i===5), circ=(i===11), col=bad?RED:(circ?CHALK:AMBER);
-    const p=new THREE.Vector3(Math.cos(ang)*R,Math.sin(ang)*R*.55,Math.sin(ang*2)*.4);
-    const core=new THREE.Mesh(new THREE.SphereGeometry(bad?.14:.08,20,20),new THREE.MeshBasicMaterial({color:col}));
+    const ang=(i/N)*Math.PI*2, bad=(i===BAD), ok=(i===OK), col=bad?RED:(ok?CHALK:AMBER);
+    const p=new THREE.Vector3(Math.cos(ang)*R, Math.sin(ang)*R, 0); pts.push(p);
+    const core=new THREE.Mesh(new THREE.SphereGeometry(bad?.13:(ok?.1:.075),20,20),new THREE.MeshBasicMaterial({color:col}));
     core.position.copy(p); g.add(core);
-    const h=new THREE.Mesh(new THREE.SphereGeometry(.32,16,16),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.14,depthWrite:false,blending:THREE.AdditiveBlending}));
+    const h=new THREE.Mesh(new THREE.SphereGeometry(.2,16,16),new THREE.MeshBasicMaterial({color:bad?RED:(ok?GREEN:AMBER_DIM),transparent:true,opacity:.09,depthWrite:false,blending:THREE.AdditiveBlending}));
     h.position.copy(p); g.add(h); halos.push({core,h,bad});
+    if(ok){ // the approved take is literally CIRCLED
+      const circ=new THREE.Mesh(new THREE.TorusGeometry(.2,.018,10,48),new THREE.MeshBasicMaterial({color:GREEN}));
+      circ.position.copy(p); g.add(circ);
+    }
   }
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(R,.012,8,140),new THREE.MeshBasicMaterial({color:0x4a4a55,transparent:true,opacity:.55}));
-  ring.scale.y=.55; g.add(ring);
-  const dn=160,dg=new THREE.BufferGeometry(),da=new Float32Array(dn*3);
-  for(let i=0;i<dn;i++){da[i*3]=(Math.random()-.5)*13;da[i*3+1]=(Math.random()-.5)*9;da[i*3+2]=(Math.random()-.5)*6;}
+  // the reel: a loop line threading every take
+  const reel=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x6a5a3a,transparent:true,opacity:.5}));
+  g.add(reel);
+  const dn=120,dg=new THREE.BufferGeometry(),da=new Float32Array(dn*3);
+  for(let i=0;i<dn;i++){da[i*3]=(Math.random()-.5)*12;da[i*3+1]=(Math.random()-.5)*8;da[i*3+2]=(Math.random()-.5)*5;}
   dg.setAttribute('position',new THREE.BufferAttribute(da,3));
-  const dust=new THREE.Points(dg,new THREE.PointsMaterial({color:0xf0b24a,size:.02,transparent:true,opacity:.32}));
-  scene.add(dust); g.rotation.x=-.35;
+  const dust=new THREE.Points(dg,new THREE.PointsMaterial({color:0xf0b24a,size:.018,transparent:true,opacity:.28}));
+  scene.add(dust);
+  const TILT=-0.42; g.rotation.x=TILT;   // view the reel at an angle
   let mx=0,my=0; addEventListener('pointermove',e=>{mx=e.clientX/innerWidth-.5;my=e.clientY/innerHeight-.5;});
   const host=document.getElementById('top');
   const resize=()=>{const w=host.clientWidth||innerWidth,h=host.clientHeight||innerHeight;r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();};
   addEventListener('resize',resize);
-  requestAnimationFrame(resize); requestAnimationFrame(()=>requestAnimationFrame(resize));
-  setTimeout(resize,400);
+  requestAnimationFrame(resize); requestAnimationFrame(()=>requestAnimationFrame(resize)); setTimeout(resize,400);
   let t=0;(function loop(){t+=.016;
-    if(!reduce){g.rotation.z=t*.12;dust.rotation.y=t*.03;
-      g.rotation.y+=((mx*.5)-g.rotation.y)*.05; g.rotation.x+=((-.35+my*.3)-g.rotation.x)*.05;
-      halos.forEach(o=>{if(o.bad){const s=1+Math.sin(t*3)*.25;o.core.scale.setScalar(s);o.h.material.opacity=.14+Math.sin(t*3)*.1;}});}
+    if(!reduce){g.rotation.z=t*.07; dust.rotation.y=t*.025;
+      // very subtle parallax so the ring stays centred (never spills off-screen)
+      g.rotation.y+=((mx*.12)-g.rotation.y)*.04; g.rotation.x+=((TILT+my*.06)-g.rotation.x)*.04;
+      halos.forEach(o=>{if(o.bad){const s=1+Math.sin(t*3)*.22;o.core.scale.setScalar(s);o.h.material.opacity=.12+Math.sin(t*3)*.09;}});}
     r.render(scene,cam); requestAnimationFrame(loop);})();
 }catch(e){ if(cv) cv.style.display='none'; }
 </script>
