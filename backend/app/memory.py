@@ -1,4 +1,9 @@
-"""Red-Thread Memory placeholder."""
+"""Red-Thread Memory builder.
+
+Deterministic golden-path memory (story + visual anchors + auto-greenlight) derived
+after the Anchor Gate. Used by the orchestrator and the live runner.
+"""
+
 
 def build_red_thread_memory(anchor_gate_result):
     return {

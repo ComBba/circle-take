@@ -15,12 +15,12 @@ Circle Take is a self-correcting production loop for generated episodes. It catc
 
 | Area | State |
 |---|---|
-| Orchestrator (state machine + 7 endpoints) | ✅ working over golden-path fixtures, 15 pytest green, verified in Docker |
+| Orchestrator (state machine + 7 endpoints) | ✅ working over golden-path fixtures, 59 pytest green, verified in Docker |
 | Live Qwen3.7 contracts / Continuity Court | ⏳ pending `QWEN_API_KEY` (code path ready) |
 | Live Wan 2.7 video gen / reshoot | ⏳ pending `QWEN_API_KEY` |
 | Alibaba Cloud deploy + OSS | ⏳ pending credentials |
 
-> Runtime is **fixture-first**: the full loop runs today on the documented golden-path artifacts. Setting `QWEN_API_KEY` (and `APP_ENV=live`) swaps fixture loads for real Qwen3.7 + Wan 2.7 calls — fixtures are never presented as live AI output.
+> **How "live" works (honest):** the real AI pipeline — Qwen3.7 contracts/Continuity Court + Wan 2.7 video — runs via `scripts/run_golden_path_live.py` (a real agent run; long video generation is not done per HTTP request). In live mode the HTTP API **serves those generated artifacts** from `artifacts/live/` (else the documented fixtures). Fixtures are never presented as live output; real evidence is committed in `docs/evidence/golden-path/`. Note: the live Anchor Gate honestly returns `quarantine` when a generated take doesn't fully match the contracts — the gate is strict, not a rubber stamp.
 
 ## Demo
 
@@ -70,7 +70,7 @@ curl -s localhost:8000/api/episodes/$EID/report             # full production re
 ```bash
 cd backend && source .venv/bin/activate
 pip install -r requirements-dev.txt
-python -m pytest -q       # 15 passed
+python -m pytest -q       # 59 passed
 ```
 
 ## Qwen Cloud Usage
