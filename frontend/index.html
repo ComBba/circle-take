@@ -4,164 +4,266 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Circle Take — Bad takes don't make the cut.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Caveat:wght@600;700&family=Hanken+Grotesk:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0b0d12; --panel:#141821; --panel2:#1b2030; --line:#2a3142;
-    --fg:#e8edf5; --muted:#8b96ab; --accent:#7c9cff; --gold:#f3c969;
-    --red:#ff5d5d; --green:#54d28a; --ribbon:#e23b4e;
+    --ink:#0b0b0d; --ink2:#121216; --panel:#16161b; --panel2:#1d1d24; --line:#2b2b34;
+    --paper:#f3ecdf; --fg:#ece7dc; --muted:#9a958c;
+    --red:#e6324b; --red-soft:#ff5d6e; --amber:#f0b24a; --green:#5bd08a; --slate:#cfd6df;
+    --mono:'JetBrains Mono',ui-monospace,monospace; --body:'Hanken Grotesk',-apple-system,sans-serif;
+    --disp:'Anton',Impact,sans-serif; --mark:'Caveat',cursive;
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;background:radial-gradient(1200px 600px at 50% -10%,#161b2b,var(--bg));color:var(--fg);min-height:100vh}
-  .wrap{max-width:1100px;margin:0 auto;padding:2rem 1.25rem 4rem}
-  header{display:flex;align-items:baseline;gap:.9rem;flex-wrap:wrap;margin-bottom:.25rem}
-  h1{font-size:2rem;font-weight:800;letter-spacing:-.02em}
-  .tag{color:var(--gold);font-style:italic}
-  .sub{color:var(--muted);margin:.4rem 0 1.25rem}
-  .badge{font-size:.72rem;padding:.2rem .6rem;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
-  .bar{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:.9rem 1rem;margin-bottom:1.25rem}
-  input{background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:9px;padding:.5rem .7rem;font-size:.9rem}
-  input#title{min-width:220px}
-  button{background:linear-gradient(180deg,#7c9cff,#5f7ff0);color:#0a0e18;border:0;border-radius:10px;padding:.6rem 1.1rem;font-weight:700;cursor:pointer;font-size:.92rem}
-  button:disabled{opacity:.5;cursor:not-allowed}
-  button.ghost{background:var(--panel2);color:var(--fg);border:1px solid var(--line)}
-  .track{display:flex;gap:.4rem;flex-wrap:wrap;margin:0 0 1.25rem}
-  .pill{font-size:.7rem;padding:.25rem .55rem;border-radius:7px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
-  .pill.done{color:var(--green);border-color:rgba(84,210,138,.4)}
-  .pill.active{color:var(--gold);border-color:rgba(243,201,105,.5)}
-  .stage{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.1rem 1.25rem;margin:.85rem 0;opacity:0;transform:translateY(8px);transition:.4s}
-  .stage.show{opacity:1;transform:none}
-  .stage h3{font-size:1.05rem;margin-bottom:.5rem;display:flex;gap:.5rem;align-items:center}
-  .stage h3 .n{color:var(--muted);font-size:.8rem;font-weight:600}
-  pre{background:#0a0d14;border:1px solid var(--line);border-radius:9px;padding:.7rem .85rem;overflow:auto;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.78rem;line-height:1.5;color:#cdd7ea}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem}
-  .card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:.7rem}
-  .card .id{font-weight:700} .card.high{border-color:rgba(255,93,93,.5)}
-  .risk{font-size:.7rem;padding:.1rem .45rem;border-radius:6px;background:rgba(255,93,93,.15);color:var(--red)}
-  .risk.low{background:rgba(84,210,138,.15);color:var(--green)} .risk.medium{background:rgba(243,201,105,.15);color:var(--gold)}
-  .cut{font-size:3.2rem;font-weight:900;letter-spacing:.12em;color:var(--red);text-align:center;padding:1rem;border:2px dashed rgba(255,93,93,.5);border-radius:14px;background:rgba(255,93,93,.05)}
-  .ba{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
-  .frame{border:1px solid var(--line);border-radius:10px;padding:1rem;text-align:center;background:var(--panel2)}
-  .frame .lbl{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-  .frame .big{font-size:2.4rem;margin:.4rem 0}
-  .frame.bad{border-color:rgba(255,93,93,.4)} .frame.good{border-color:rgba(84,210,138,.45)}
-  .ribbon-on{color:var(--ribbon)} .miss{color:var(--muted);text-decoration:line-through}
-  .scores{display:flex;gap:.6rem;flex-wrap:wrap}
-  .score{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:.5rem .8rem;text-align:center}
-  .score b{display:block;font-size:1.3rem;color:var(--green)}
-  .note{color:var(--muted);font-size:.78rem;margin-top:.5rem}
-  footer{color:var(--muted);font-size:.78rem;margin-top:2rem;text-align:center}
-  a{color:var(--accent)}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--body);background:var(--ink);color:var(--fg);overflow-x:hidden;line-height:1.6}
+  body::before{content:"";position:fixed;inset:0;z-index:9998;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+  body::after{content:"";position:fixed;inset:0;z-index:9997;pointer-events:none;background:radial-gradient(120% 80% at 50% 35%,transparent 55%,rgba(0,0,0,.55) 100%);}
+  a{color:var(--amber);text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 1.25rem}
+
+  /* HERO */
+  .hero{min-height:100svh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;position:relative;
+    background:radial-gradient(80% 60% at 50% 0%,#1a1a22 0%,var(--ink) 60%);overflow:hidden}
+  #three{position:absolute;inset:0;z-index:0;display:block}
+  .hero .perf,.hero .gear,.hero .mode{z-index:3}
+  .hero .slate-chip,.hero h1.title,.hero .tagline,.hero .sub,.hero .cta-row,.hero .scroll-hint{position:relative;z-index:2}
+  .perf{position:absolute;top:0;bottom:0;width:26px;opacity:.4;
+    background:repeating-linear-gradient(to bottom,transparent 0 14px,#000 14px 30px),linear-gradient(#1a1a20,#1a1a20)}
+  .perf.l{left:0}.perf.r{right:0}
+  .slate-chip{font-family:var(--mono);font-size:.7rem;letter-spacing:.25em;color:var(--muted);border:1px solid var(--line);
+    padding:.35rem .8rem;border-radius:3px;background:#0e0e12cc;text-transform:uppercase;margin-bottom:1.6rem;opacity:0;animation:fade .8s .1s forwards}
+  .slate-chip b{color:var(--amber)}
+  h1.title{font-family:var(--disp);font-size:clamp(3.4rem,13vw,9rem);line-height:.86;letter-spacing:.01em;text-transform:uppercase;
+    color:var(--paper);opacity:0;animation:rise .9s .15s forwards;text-shadow:0 8px 40px rgba(0,0,0,.6)}
+  .tagline{font-family:var(--mark);font-size:clamp(1.6rem,4.5vw,2.7rem);color:var(--red-soft);margin-top:.4rem;transform:rotate(-2deg);opacity:0;animation:fade .9s .5s forwards}
+  .sub{max-width:540px;color:var(--muted);margin:1.5rem auto 0;font-size:1.02rem;opacity:0;animation:fade .9s .7s forwards}
+  .cta-row{margin-top:2.3rem;display:flex;gap:.9rem;flex-wrap:wrap;justify-content:center;opacity:0;animation:fade .9s .9s forwards}
+  .btn{font-family:var(--body);font-weight:800;font-size:1.02rem;cursor:pointer;border:0;padding:.95rem 1.9rem;border-radius:2px;letter-spacing:.02em;transition:transform .15s,box-shadow .15s}
+  .btn.primary{background:var(--red);color:#fff}
+  .btn.primary:hover{transform:translateY(-2px);box-shadow:0 12px 34px -8px rgba(230,50,75,.6)}
+  .btn.ghost{background:#0e0e12aa;color:var(--fg);border:1px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--amber);color:var(--amber)}
+  .btn:disabled{opacity:.45;cursor:wait}
+  .scroll-hint{position:absolute;bottom:1.4rem;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:.68rem;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;opacity:0;animation:fade 1s 1.3s forwards}
+  .scroll-hint span{display:block;font-size:1.1rem;animation:bob 1.8s infinite}
+  .mode{position:absolute;top:1.1rem;right:2.2rem;font-family:var(--mono);font-size:.66rem;letter-spacing:.15em;color:var(--muted);border:1px solid var(--line);padding:.25rem .55rem;border-radius:3px;background:#0e0e12aa}
+  .mode b{color:var(--green)}
+  .gear{position:absolute;top:1.05rem;left:2.2rem;background:none;border:0;color:var(--muted);cursor:pointer;font-size:1rem}
+  .adv{position:fixed;top:0;left:0;right:0;z-index:50;background:#0e0e12;border-bottom:1px solid var(--line);padding:.7rem 1.25rem;display:none;gap:.6rem;align-items:center;font-family:var(--mono);font-size:.8rem}
+  .adv.open{display:flex}
+  .adv input{background:var(--panel);border:1px solid var(--line);color:var(--fg);padding:.4rem .6rem;border-radius:3px;font-family:var(--mono);min-width:240px}
+
+  /* PIPELINE STEPPER (Devpost Track 2 procedure) */
+  .pipeline{position:sticky;top:0;z-index:40;display:none;gap:.3rem;justify-content:center;flex-wrap:wrap;
+    padding:.6rem;background:#0a0a0dd9;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .pipeline.on{display:flex}
+  .pipeline span{font-family:var(--mono);font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+    padding:.3rem .6rem;border:1px solid var(--line);border-radius:20px;transition:.4s}
+  .pipeline span.active{color:var(--ink);background:var(--amber);border-color:var(--amber);font-weight:700}
+  .pipeline span.done{color:var(--amber);border-color:rgba(240,178,74,.4)}
+
+  /* REEL / SCENES */
+  .reel{padding:1rem 0 5rem}
+  .scene{opacity:0;transform:translateY(26px);transition:opacity .7s,transform .7s;margin:2.3rem 0}
+  .scene.in{opacity:1;transform:none}
+  .marker{font-family:var(--mono);font-size:.7rem;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;margin-bottom:.7rem}
+  .marker::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 12px var(--red)}
+  .marker .step{color:var(--amber)}
+  .marker .stage{font-size:.6rem;color:var(--ink);background:var(--slate);padding:.08rem .45rem;border-radius:20px;letter-spacing:.05em}
+  .narr{font-size:1.12rem;color:var(--fg);max-width:640px;margin-bottom:1rem}
+  .narr em{color:var(--amber);font-style:normal;font-weight:700}
+  .card{background:linear-gradient(180deg,var(--panel),var(--ink2));border:1px solid var(--line);border-radius:10px;padding:1.2rem 1.3rem}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.8rem}
+  .cast{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:.9rem}
+  .cast .role{font-family:var(--mono);font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+  .cast .nm{font-family:var(--disp);font-size:1.5rem;letter-spacing:.02em;color:var(--paper);margin:.15rem 0 .5rem;text-transform:uppercase}
+  .tags{display:flex;flex-wrap:wrap;gap:.3rem}
+  .tag{font-size:.7rem;padding:.15rem .5rem;border-radius:20px;background:rgba(240,178,74,.12);color:var(--amber);border:1px solid rgba(240,178,74,.3)}
+  .tag.no{background:rgba(230,50,75,.1);color:var(--red-soft);border-color:rgba(230,50,75,.3)}
+  .shot{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:.75rem;text-align:center}
+  .shot.high{border-color:rgba(230,50,75,.5)}
+  .shot .sid{font-family:var(--mono);font-weight:700;font-size:1.05rem}
+  .badge{font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;padding:.1rem .45rem;border-radius:4px;display:inline-block;margin-top:.3rem}
+  .badge.high{background:rgba(230,50,75,.16);color:var(--red-soft)}.badge.medium{background:rgba(240,178,74,.16);color:var(--amber)}.badge.low{background:rgba(91,208,138,.16);color:var(--green)}
+  .monitor{background:#000;border:1px solid var(--line);border-radius:10px;padding:.6rem;max-width:420px}
+  .monitor video{width:100%;border-radius:6px;display:block}
+  .monitor .lbl{font-family:var(--mono);font-size:.66rem;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin:.4rem .2rem 0;display:flex;justify-content:space-between}
+  .stub{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;font-size:2.6rem;background:repeating-linear-gradient(45deg,#101014,#101014 12px,#14141a 12px 24px);border-radius:6px}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+  .ba .rec{color:var(--red);font-family:var(--mono)} .ba .ok{color:var(--green);font-family:var(--mono)}
+  .cut-scene{min-height:62svh;display:flex;align-items:center;justify-content:center;position:relative}
+  .clap{font-family:var(--disp);font-size:clamp(5rem,22vw,15rem);color:var(--red);letter-spacing:.04em;text-shadow:0 0 60px rgba(230,50,75,.5);transform:scale(.6) rotate(-3deg);opacity:0}
+  .cut-scene.in .clap{animation:slam .6s cubic-bezier(.2,1.4,.3,1) forwards}
+  .clapper{position:absolute;top:30%;left:50%;width:min(420px,80vw);height:34px;background:repeating-linear-gradient(115deg,#f3ecdf 0 22px,#0b0b0d 22px 44px);border-radius:3px;transform-origin:left center;opacity:0;transform:translateX(-50%)}
+  .cut-scene.in .clapper{animation:clack .5s .05s forwards}
+  .ruling{border-left:4px solid var(--red)}
+  .ruling .verdict{font-family:var(--disp);font-size:2rem;color:var(--red);letter-spacing:.04em}
+  .viol{display:flex;gap:.6rem;align-items:flex-start;padding:.4rem 0;border-bottom:1px dashed var(--line)}
+  .viol .x{color:var(--red);font-weight:800;font-family:var(--mono)}
+  .toggle{font-family:var(--mono);font-size:.7rem;color:var(--muted);cursor:pointer;margin-top:.7rem;border:1px solid var(--line);display:inline-block;padding:.25rem .55rem;border-radius:4px}
+  pre{background:#0a0a0d;border:1px solid var(--line);border-radius:8px;padding:.8rem;overflow:auto;font-family:var(--mono);font-size:.76rem;color:var(--slate);margin-top:.6rem;display:none}
+  pre.show{display:block}
+  .note{background:#161109;border:1px solid rgba(240,178,74,.3);border-left:4px solid var(--amber);border-radius:8px;padding:1rem 1.2rem;font-family:var(--mono);font-size:.85rem;color:#f2e3c4;white-space:pre-wrap}
+  .gate{display:flex;gap:1.4rem;align-items:center;flex-wrap:wrap}
+  .scores{display:flex;gap:.7rem}
+  .dial{text-align:center} .dial b{display:block;font-family:var(--disp);font-size:1.8rem;color:var(--green)}
+  .dial.bad b{color:var(--red)} .dial span{font-family:var(--mono);font-size:.62rem;color:var(--muted);text-transform:uppercase}
+  .stamp{position:relative;font-family:var(--disp);font-size:1.6rem;letter-spacing:.06em;padding:1rem 1.4rem}
+  .stamp.ok{color:var(--green)} .stamp.no{color:var(--red)}
+  .stamp .ring{position:absolute;inset:-6px -2px;border:3px solid currentColor;border-radius:48% 52% 50% 50%/55% 50% 50% 45%;transform:rotate(-6deg)}
+  .stamp.no .ring{border-radius:6px}
+  .stamp .mk{font-family:var(--mark);position:absolute;bottom:-1.4rem;right:0;font-size:1.2rem}
+  .board{position:relative;background:radial-gradient(circle at 30% 30%,#2a2118,#1b160f);border:1px solid #3a2f20;border-radius:10px;padding:1.4rem;overflow:hidden}
+  .board::before{content:"";position:absolute;inset:0;opacity:.18;background-image:radial-gradient(#6b5538 1px,transparent 1.4px);background-size:9px 9px}
+  .pins{position:relative;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1.2rem}
+  .pin{background:#f3ecdf;color:#1a1410;border-radius:3px;padding:.7rem .8rem;font-size:.86rem;box-shadow:0 6px 18px rgba(0,0,0,.45);transform:rotate(var(--r,-1deg));position:relative}
+  .pin::before{content:"";position:absolute;top:-7px;left:50%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff8b8b,var(--red));box-shadow:0 2px 4px rgba(0,0,0,.5)}
+  .pin .k{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:#9a7b52}
+  .greenlight{margin-top:1.1rem;background:linear-gradient(100deg,#0d1a12,#0b0b0d);border:1px solid rgba(91,208,138,.35);border-radius:10px;padding:1rem 1.2rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
+  .greenlight .ep{font-family:var(--disp);font-size:1.5rem;color:var(--green);text-transform:uppercase;letter-spacing:.02em}
+  .closing{text-align:center;margin:4rem 0 1rem}
+  .closing .big{font-family:var(--mark);font-size:clamp(1.8rem,6vw,3rem);color:var(--paper)}
+  .err{color:var(--red-soft);font-family:var(--mono);font-size:.85rem;border:1px solid var(--red);border-radius:8px;padding:.8rem;background:rgba(230,50,75,.06)}
+  footer{border-top:1px solid var(--line);padding:1.6rem 0;color:var(--muted);font-size:.8rem;text-align:center}
+  footer code{font-family:var(--mono);color:var(--slate)}
+  @keyframes fade{to{opacity:1}}
+  @keyframes rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+  @keyframes slam{0%{transform:scale(.5) rotate(-8deg);opacity:0}60%{transform:scale(1.12) rotate(2deg);opacity:1}100%{transform:scale(1) rotate(-3deg);opacity:1}}
+  @keyframes clack{0%{opacity:1;transform:translateX(-50%) rotate(-18deg)}55%{transform:translateX(-50%) rotate(2deg)}100%{opacity:0;transform:translateX(-50%) rotate(0)}}
+  @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+  @media(max-width:620px){.ba{grid-template-columns:1fr}.perf{display:none}.mode{right:1rem}.gear{left:1rem}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Circle Take</h1>
-    <span class="tag">Bad takes don't make the cut.</span>
-    <span class="badge" id="mode">fixture mode</span>
-  </header>
-  <p class="sub">A self-correcting production loop: catch broken continuity, reshoot only the failed shot, remember only approved takes. Track 2 — AI Showrunner.</p>
+<div class="adv" id="adv"><span>API base</span><input id="api" /><button class="btn ghost" id="advClose" style="padding:.4rem .8rem">close</button></div>
 
-  <div class="bar">
-    <label class="pill">Brief</label>
-    <input id="title" value="The Last Alarm" />
-    <label class="pill">API</label>
-    <input id="api" style="min-width:230px" />
-    <button id="run">▶ Run Circle Take</button>
-    <button id="reset" class="ghost">Reset</button>
+<header class="hero" id="top">
+  <canvas id="three"></canvas>
+  <div class="perf l"></div><div class="perf r"></div>
+  <button class="gear" id="gear" title="advanced">⚙</button>
+  <div class="mode" id="mode">— mode —</div>
+  <div class="slate-chip">SCENE 01 · TAKE 01 · <b>ROLL</b></div>
+  <h1 class="title">Circle<br>Take</h1>
+  <div class="tagline">Bad takes don't make the cut.</div>
+  <p class="sub">A self-correcting production loop for generated episodes. It catches broken continuity, reshoots only the failed shot, and remembers only approved takes. <b style="color:var(--fg)">Powered by Qwen Cloud.</b></p>
+  <div class="cta-row">
+    <button class="btn primary" id="roll">▶ Roll the demo</button>
+    <a class="btn ghost" href="https://github.com/ComBba/circle-take" target="_blank">View on GitHub</a>
   </div>
+  <div class="scroll-hint">the show plays itself<span>↓</span></div>
+</header>
 
-  <div class="track" id="track"></div>
-  <div id="stages"></div>
+<nav class="pipeline" id="pipeline" aria-label="Track 2 pipeline">
+  <span data-st="script">Scriptwriting</span><span data-st="board">Storyboarding</span>
+  <span data-st="gen">Video&nbsp;Generation</span><span data-st="edit">Editing</span><span data-st="mem">Memory</span>
+</nav>
 
-  <footer>
-    Powered by Qwen Cloud · live runs use <code>qwen3.7-plus</code> + Wan 2.7. In fixture mode the loop runs on documented golden-path artifacts (never presented as live AI output).
-  </footer>
-</div>
+<main class="reel wrap" id="reel"></main>
+
+<footer class="wrap">
+  Track 2 · AI Showrunner · Powered by Qwen Cloud — live runs use <code>qwen3.7-plus</code> + Wan 2.7.
+  In fixture mode the loop runs on golden-path artifacts (never presented as live output).
+</footer>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js';
+const cv=document.getElementById('three');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+try{
+  const r=new THREE.WebGLRenderer({canvas:cv,alpha:true,antialias:true});
+  r.setPixelRatio(Math.min(devicePixelRatio,2));
+  const scene=new THREE.Scene();
+  const cam=new THREE.PerspectiveCamera(50,1,.1,100); cam.position.set(0,0,6);
+  const g=new THREE.Group(); scene.add(g);
+  const N=16,R=2.5, AMBER=0xf0b24a,RED=0xe6324b,CHALK=0xf3ecdf, halos=[];
+  for(let i=0;i<N;i++){
+    const ang=(i/N)*Math.PI*2, bad=(i===5), circ=(i===11), col=bad?RED:(circ?CHALK:AMBER);
+    const p=new THREE.Vector3(Math.cos(ang)*R,Math.sin(ang)*R*.55,Math.sin(ang*2)*.4);
+    const core=new THREE.Mesh(new THREE.SphereGeometry(bad?.14:.08,20,20),new THREE.MeshBasicMaterial({color:col}));
+    core.position.copy(p); g.add(core);
+    const h=new THREE.Mesh(new THREE.SphereGeometry(.32,16,16),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.14,depthWrite:false,blending:THREE.AdditiveBlending}));
+    h.position.copy(p); g.add(h); halos.push({core,h,bad});
+  }
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(R,.012,8,140),new THREE.MeshBasicMaterial({color:0x4a4a55,transparent:true,opacity:.55}));
+  ring.scale.y=.55; g.add(ring);
+  const dn=160,dg=new THREE.BufferGeometry(),da=new Float32Array(dn*3);
+  for(let i=0;i<dn;i++){da[i*3]=(Math.random()-.5)*13;da[i*3+1]=(Math.random()-.5)*9;da[i*3+2]=(Math.random()-.5)*6;}
+  dg.setAttribute('position',new THREE.BufferAttribute(da,3));
+  const dust=new THREE.Points(dg,new THREE.PointsMaterial({color:0xf0b24a,size:.02,transparent:true,opacity:.32}));
+  scene.add(dust); g.rotation.x=-.35;
+  let mx=0,my=0; addEventListener('pointermove',e=>{mx=e.clientX/innerWidth-.5;my=e.clientY/innerHeight-.5;});
+  const host=document.getElementById('top');
+  const resize=()=>{const w=host.clientWidth||innerWidth,h=host.clientHeight||innerHeight;r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();};
+  addEventListener('resize',resize);
+  requestAnimationFrame(resize); requestAnimationFrame(()=>requestAnimationFrame(resize));
+  setTimeout(resize,400);
+  let t=0;(function loop(){t+=.016;
+    if(!reduce){g.rotation.z=t*.12;dust.rotation.y=t*.03;
+      g.rotation.y+=((mx*.5)-g.rotation.y)*.05; g.rotation.x+=((-.35+my*.3)-g.rotation.x)*.05;
+      halos.forEach(o=>{if(o.bad){const s=1+Math.sin(t*3)*.25;o.core.scale.setScalar(s);o.h.material.opacity=.14+Math.sin(t*3)*.1;}});}
+    r.render(scene,cam); requestAnimationFrame(loop);})();
+}catch(e){ if(cv) cv.style.display='none'; }
+</script>
 
 <script>
-const $ = (s)=>document.querySelector(s);
-const apiInput = $('#api');
-apiInput.value = (location.protocol.startsWith('http') ? location.origin : 'http://localhost:8000');
-const STEPS = ['create','generate','review','reshoot','memory','report'];
-const LABELS = {create:'Brief',generate:'Contracts→Take 1',review:'CUT / Court',reshoot:'Take Two',memory:'Memory',report:'Report'};
+const $=s=>document.querySelector(s);
+const api=$('#api'); api.value=(location.protocol.startsWith('http')?location.origin:'http://localhost:8000');
 let busy=false;
+fetch(api.value+'/health').then(r=>r.json()).then(d=>$('#mode').innerHTML='mode · <b>'+d.mode+'</b>').catch(()=>{});
+$('#gear').onclick=()=>$('#adv').classList.toggle('open'); $('#advClose').onclick=()=>$('#adv').classList.remove('open');
 
-function renderTrack(active){
-  $('#track').innerHTML = STEPS.map((s,i)=>{
-    const cls = active>i?'done':(active===i?'active':'');
-    return `<span class="pill ${cls}">${i+1}. ${LABELS[s]}</span>`;
-  }).join('');
-}
-function stage(id,title,n,html){
-  let el=document.getElementById('st-'+id);
-  if(!el){el=document.createElement('div');el.id='st-'+id;el.className='stage';$('#stages').appendChild(el);}
-  el.innerHTML=`<h3>${title} <span class="n">${n}</span></h3>`+html;
-  requestAnimationFrame(()=>el.classList.add('show'));
-  el.scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-const J = (o)=>`<pre>${JSON.stringify(o,null,2)}</pre>`;
-async function call(method,path,body){
-  const r=await fetch(apiInput.value+path,{method,headers:{'content-type':'application/json'},body:body?JSON.stringify(body):undefined});
-  if(!r.ok) throw new Error(path+' -> '+r.status);
-  return r.json();
-}
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in')}),{threshold:.25});
+const reel=$('#reel'), pipe=$('#pipeline');
+const STAGES=['script','board','gen','edit','mem'];
+function setStage(k){pipe.classList.add('on');const i=STAGES.indexOf(k);
+  pipe.querySelectorAll('span').forEach((s,j)=>{s.classList.toggle('active',j===i);s.classList.toggle('done',j<i);});}
+function scene(html,cls=''){const d=document.createElement('section');d.className='scene '+cls;d.innerHTML=html;reel.appendChild(d);io.observe(d);return d;}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+async function reveal(el){el.classList.add('in');el.scrollIntoView({behavior:'smooth',block:'center'});await wait(950);}
+async function call(m,p,b){const r=await fetch(api.value+p,{method:m,headers:{'content-type':'application/json'},body:b?JSON.stringify(b):undefined});if(!r.ok)throw new Error(p+' → '+r.status);return r.json();}
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const vid=n=>`${api.value}/api/media/${n}`;
+const mk=(step,title,stage)=>`<div class="marker"><span class="step">${step}</span> ${title}${stage?`<span class="stage">${stage}</span>`:''}</div>`;
 
 async function run(){
-  if(busy) return; busy=true; $('#run').disabled=true; $('#stages').innerHTML='';
+  if(busy)return; busy=true; $('#roll').disabled=true; reel.innerHTML=''; pipe.classList.add('on');
   try{
-    renderTrack(0);
-    const created = await call('POST','/api/episodes',{title:$('#title').value});
-    const id = created.episode_id;
-    stage('brief','🎬 Brief',`episode ${id} · ${created.state}`,J(created.artifacts.brief));
+    const created=await call('POST','/api/episodes',{title:'The Last Alarm'}); const id=created.episode_id;
+    await reveal(scene(mk('cue 1','The pitch','Brief')+`<div class="narr">A 15-second clay micro-drama: <em>The Last Alarm</em>. A broken alarm clock learns it'll be replaced — and a jealous cat, Luna, hides the evidence.</div><div class="card" style="font-family:var(--mono);font-size:.85rem;color:var(--slate)">${esc(created.artifacts.brief.logline)}</div>`));
 
-    renderTrack(1);
-    const gen = await call('POST',`/api/episodes/${id}/generate`);
-    const a = gen.artifacts;
-    const actors = (a.actor_contracts.actors||[]).map(x=>`<div class="card"><div class="id">${x.display_name}</div><div class="note">fixed: ${x.fixed_markers.join(', ')}</div></div>`).join('');
-    stage('contracts','📜 Contracts',gen.state,`<div class="grid">${actors}</div><div class="note">Style: ${a.style_contract.style_id}</div>`);
-    const shots=(a.shot_risk_ledger.risks||[]).map(s=>`<div class="card ${s.risk_level==='high'?'high':''}"><div class="id">${s.shot_id}</div><span class="risk ${s.risk_level}">${s.risk_level}</span><div class="note">${s.route||''}</div></div>`).join('');
-    stage('slate','🎞️ Storyboard Slate + Shot Risk',gen.state,`<div class="grid">${shots}</div>`);
-    stage('take1','🎥 Take 1',gen.state, a.take_1.source==='live'
-      ? `<video controls preload="metadata" style="max-width:360px;border-radius:10px" src="${apiInput.value}/api/media/take1_S02.mp4"></video><div class="note">Real Wan 2.7 generation (Shot 2)</div>`
-      : `<div class="frame bad"><div class="lbl">Shot 2 · generated</div><div class="big">🐈‍⬛ <span class="miss">red ribbon</span></div><div class="note">${a.take_1.pending?('⏳ '+a.take_1.pending):'live'}</div></div>`);
+    const gen=await call('POST',`/api/episodes/${id}/generate`); const a=gen.artifacts;
+    setStage('script');
+    await reveal(scene(mk('cue 2','Actor Contracts','Scriptwriting')+`<div class="narr">Scripty turns the brief into <em>identity contracts</em> — who each actor is, and which markers must never drift.</div><div class="grid">${(a.actor_contracts.actors||[]).map(x=>`<div class="cast"><div class="role">${esc(x.role||'actor')}</div><div class="nm">${esc(x.display_name)}</div><div class="tags">${(x.fixed_markers||[]).slice(0,3).map(m=>`<span class="tag">${esc(m)}</span>`).join('')}${(x.forbidden_drift||[]).slice(0,1).map(m=>`<span class="tag no">✗ ${esc(m)}</span>`).join('')}</div></div>`).join('')}</div>`));
 
-    renderTrack(2);
-    const rev = await call('POST',`/api/episodes/${id}/review`);
-    stage('cut','✋ CUT','the show stops itself',`<div class="cut">CUT.</div>`);
-    stage('court','⚖️ Continuity Court — Qwen verdict',rev.state,J(rev.artifacts.continuity_verdict));
+    setStage('board');
+    await reveal(scene(mk('cue 3','Storyboard &amp; risk','Storyboarding')+`<div class="narr">Each shot is scored for identity risk before a frame exists. <em>Shot 2 is high risk</em> — Luna's tail hides the prop and her ribbon can vanish.</div><div class="grid">${(a.shot_risk_ledger.risks||[]).map(s=>`<div class="shot ${s.risk_level==='high'?'high':''}"><div class="sid">${esc(s.shot_id)}</div><span class="badge ${esc(s.risk_level)}">${esc(s.risk_level)}</span></div>`).join('')}</div>`));
 
-    renderTrack(3);
-    const rs = await call('POST',`/api/episodes/${id}/reshoot`);
-    stage('spell','🪄 Reshoot Spell (Shot 2 only)',rs.state,`<pre>${rs.artifacts.reshoot_spell}</pre>`);
-    const t2live = rs.artifacts.take_2 && rs.artifacts.take_2.source==='live';
-    stage('take2','🔁 Take Two Reveal',rs.state, t2live
-      ? `<div class="ba"><div class="frame bad"><div class="lbl">Before (Take 1)</div><video controls preload="metadata" style="max-width:100%;border-radius:8px" src="${apiInput.value}/api/media/take1_S02.mp4"></video></div>`+
-        `<div class="frame good"><div class="lbl">After (Take Two)</div><video controls preload="metadata" style="max-width:100%;border-radius:8px" src="${apiInput.value}/api/media/take2_S02.mp4"></video></div></div>`+
-        `<div class="note">Real Wan 2.7 — only Shot 2 was reshot.</div>`
-      : `<div class="ba"><div class="frame bad"><div class="lbl">Before</div><div class="big">🐈‍⬛ <span class="miss">no ribbon</span> · 🔢</div></div>`+
-        `<div class="frame good"><div class="lbl">After</div><div class="big">🐈‍⬛<span class="ribbon-on">🎀</span> · 🕰️</div></div></div>`+
-        `<div class="note">Only Shot 2 was reshot — Shots 1/3/4 untouched.</div>`);
+    setStage('gen'); const t1=a.take_1&&a.take_1.source==='live';
+    await reveal(scene(mk('cue 4','Take 1 · rolling','Video Generation')+`<div class="narr">Wan generates the shot. Watch closely — something's already wrong.</div><div class="monitor">${t1?`<video controls preload="metadata" src="${vid('take1_S02.mp4')}"></video>`:`<div class="stub">🐈‍⬛</div>`}<div class="lbl"><span>SHOT 2 · TAKE 1</span><span class="rec" style="color:var(--red)">● REC</span></div></div>`));
 
-    renderTrack(4);
-    const mem = await call('POST',`/api/episodes/${id}/memory`);
-    const ag=mem.artifacts.anchor_gate;
-    stage('gate','✅ Anchor Gate',mem.state,`<div class="scores"><div class="score"><b>${ag.identity_score}</b>identity</div><div class="score"><b>${ag.style_score}</b>style</div><div class="score"><b>${ag.prop_score}</b>prop</div><div class="score"><b>${ag.anchor_status}</b>status</div></div>`);
-    const m=mem.artifacts.red_thread_memory;
-    stage('memory','🧵 Red-Thread Memory + Auto Greenlight',mem.state,
-      J(m.story_memory)+`<div class="note">Next cold open → <b>${m.auto_greenlight.episode_2_title}</b>: ${m.auto_greenlight.cold_open}</div>`);
+    const rev=await call('POST',`/api/episodes/${id}/review`); const v=rev.artifacts.continuity_verdict;
+    await reveal(scene(`<div class="clapper"></div><div class="clap">CUT.</div>`,'cut-scene'));
+    await reveal(scene(mk('cue 5','Continuity Court','Review')+`<div class="narr">The take isn't trusted — it's <em>judged</em>. Qwen's vision model inspects the frame against the contracts.</div><div class="card ruling"><div class="verdict">VERDICT: ${esc((v.verdict||'').toUpperCase())}</div>${(v.violations||[]).map(x=>`<div class="viol"><span class="x">✗</span><span>${esc(x.detail||x.type||'continuity break')}</span></div>`).join('')}<div class="toggle" data-pre>▸ view the slate (raw JSON)</div><pre>${esc(JSON.stringify(v,null,2))}</pre></div>`));
 
-    renderTrack(5);
-    const rep = await call('GET',`/api/episodes/${id}/report`);
-    stage('done','🏁 Only approved takes become memory.',rep.state,`<div class="note">Production report ready · state <b>${rep.state}</b></div>`);
-    renderTrack(6);
-  }catch(e){
-    stage('err','⚠️ Error','',`<pre>${e.message}\n\nIs the API running at ${apiInput.value}?</pre>`);
-  }finally{ busy=false; $('#run').disabled=false; }
+    setStage('edit'); const rs=await call('POST',`/api/episodes/${id}/reshoot`);
+    await reveal(scene(mk('cue 6','Reshoot Spell','Editing')+`<div class="narr">A <em>delta-only</em> repair order — reshoot the broken shot, and only that shot.</div><div class="note">${esc(rs.artifacts.reshoot_spell)}</div>`));
+    const t2=rs.artifacts.take_2&&rs.artifacts.take_2.source==='live';
+    await reveal(scene(mk('cue 7','Take Two — the reveal','Editing')+`<div class="narr">Shots 1, 3 and 4 are untouched. Only Shot 2 gets a second take.</div><div class="ba"><div class="monitor">${t2?`<video controls preload="metadata" src="${vid('take1_S02.mp4')}"></video>`:`<div class="stub">🐈‍⬛</div>`}<div class="lbl"><span>BEFORE</span><span class="rec">missing ribbon</span></div></div><div class="monitor">${t2?`<video controls preload="metadata" src="${vid('take2_S02.mp4')}"></video>`:`<div class="stub">🐈‍⬛🎀</div>`}<div class="lbl"><span>TAKE TWO</span><span class="ok">restored</span></div></div></div>`));
+
+    setStage('mem'); const mem=await call('POST',`/api/episodes/${id}/memory`); const gt=mem.artifacts.anchor_gate, m=mem.artifacts.red_thread_memory; const ok=gt.anchor_status==='approved';
+    await reveal(scene(mk('cue 8','Anchor Gate — the circle take','Memory')+`<div class="narr">Only an approved take gets <em>circled</em> and becomes memory. The gate is strict.</div><div class="card gate"><div class="scores"><div class="dial ${gt.identity_score<85?'bad':''}"><b>${gt.identity_score}</b><span>identity</span></div><div class="dial ${gt.style_score<85?'bad':''}"><b>${gt.style_score}</b><span>style</span></div><div class="dial ${gt.prop_score<85?'bad':''}"><b>${gt.prop_score}</b><span>prop</span></div></div><div class="stamp ${ok?'ok':'no'}"><span class="ring"></span>${ok?'CIRCLE TAKE':'QUARANTINE'}<span class="mk">${ok?'approved ✓':'try again'}</span></div></div>`));
+    await reveal(scene(mk('cue 9','Red-Thread Memory','Memory')+`<div class="narr">Only approved anchors become memory — pinned and threaded for the next episode.</div><div class="board"><div class="pins"><div class="pin" style="--r:-2deg"><div class="k">new fact</div>${esc(m.story_memory.new_fact)}</div><div class="pin" style="--r:1.5deg"><div class="k">relationship</div>${esc(m.story_memory.relationship_change)}</div><div class="pin" style="--r:-1deg"><div class="k">open thread</div>${esc(m.story_memory.open_thread)}</div></div>${m.auto_greenlight?`<div class="greenlight"><div><div class="k" style="font-family:var(--mono);font-size:.62rem;color:var(--muted);text-transform:uppercase">auto greenlight · next cold open</div><div class="ep">${esc(m.auto_greenlight.episode_2_title)}</div><div style="color:var(--muted);font-size:.9rem">${esc(m.auto_greenlight.cold_open)}</div></div><div style="font-size:2rem">🎬</div></div>`:''}</div>`));
+    pipe.querySelectorAll('span').forEach(s=>s.classList.add('done'));
+    await reveal(scene(`<div class="closing"><div class="big">Only approved takes become memory.</div></div>`));
+  }catch(e){scene(`<div class="err">⚠ ${esc(e.message)}<br>Is the API running at ${esc(api.value)} ? Use ⚙ to set the base.</div>`).classList.add('in');}
+  finally{busy=false;$('#roll').disabled=false;}
 }
-$('#run').onclick=run;
-$('#reset').onclick=()=>{$('#stages').innerHTML='';renderTrack(-1);};
-renderTrack(-1);
+$('#roll').onclick=run;
+reel.addEventListener('click',e=>{if(e.target.matches('[data-pre]')){const p=e.target.nextElementSibling;p.classList.toggle('show');e.target.textContent=(p.classList.contains('show')?'▾ hide slate':'▸ view the slate (raw JSON)');}});
 </script>
 </body>
 </html>
