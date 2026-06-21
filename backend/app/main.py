@@ -61,7 +61,9 @@ def _resolve_text(fixture_name: str, live_name: str | None = None) -> str:
 
 
 def _take_marker(n: int):
-    if config.is_live() and (LIVE / f"take{n}_S02.mp4").exists():
+    # Show the real Wan clip whenever it is bundled (so the deployed demo plays it),
+    # not only in full live mode.
+    if (LIVE / f"take{n}_S02.mp4").exists():
         return {"source": "live", "video": f"live/take{n}_S02.mp4", "frame": f"live/take{n}_frame.png"}
     return {"source": "fixture", "pending": "QWEN_API_KEY for live Wan"}
 

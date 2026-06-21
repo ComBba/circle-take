@@ -18,6 +18,8 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 COPY backend ./backend
 COPY examples ./examples
 COPY frontend ./frontend
+# Demo media (take1/take2 clips+frames) is injected at runtime via a volume mount
+# (-v host_media:/app/artifacts/live) so the image stays small and git-buildable.
 
 # Non-root user owns the app + writable data dir.
 RUN useradd -m appuser \
