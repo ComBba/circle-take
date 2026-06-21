@@ -1,8 +1,7 @@
-# Cloud Build only needs what the Dockerfile COPYs (backend, examples, frontend).
-# Keep the upload small: exclude git, media, scripts, docs, caches, venvs.
+# Keep the Cloud Build upload small. Include only what the Dockerfile COPYs:
+# backend, examples, frontend, and the 4 demo media files (take1/take2 clips+frames).
 .git/
 .gitignore
-artifacts/
 scripts/
 docs/
 claudedocs/
@@ -10,11 +9,6 @@ deployment/
 node_modules/
 .venv*/
 **/.venv/
-*.mp4
-*.mov
-*.webm
-*.wav
-*.png
 __pycache__/
 **/__pycache__/
 .pytest_cache/
@@ -22,3 +16,12 @@ __pycache__/
 .DS_Store
 .env
 .env.local
+
+# Exclude all artifacts EXCEPT the 4 demo media files the UI plays.
+artifacts/*
+!artifacts/live
+artifacts/live/*
+!artifacts/live/take1_S02.mp4
+!artifacts/live/take2_S02.mp4
+!artifacts/live/take1_frame.png
+!artifacts/live/take2_frame.png
