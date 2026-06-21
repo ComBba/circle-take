@@ -11,7 +11,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config
@@ -86,6 +86,12 @@ def _advance_to(store: Store, eid: str, target: EpisodeStatus) -> None:
     if ORDER.index(target) < ORDER.index(current):
         raise HTTPException(status_code=409, detail=f"cannot move {current.value} -> {target.value}")
     store.update_status(eid, target.value)
+
+
+@app.get("/")
+def root():
+    # Land visitors (and judges hitting the bare URL) directly on the demo UI.
+    return RedirectResponse(url="/ui/")
 
 
 @app.get("/health")

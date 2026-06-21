@@ -6,6 +6,8 @@
 
 **Bad takes don't make the cut.**
 
+▶️ **Live demo:** https://circle-take-145226765474.us-central1.run.app/ui/ · 🎬 **Video:** https://youtu.be/QZrLzBsiJbo
+
 Circle Take is a self-correcting production loop for generated episodes. It catches broken continuity, reshoots only the failed shot, and remembers only approved takes. Powered by Qwen Cloud.
 
 **Track:** Global AI Hackathon Series with Qwen Cloud — Track 2: AI Showrunner
