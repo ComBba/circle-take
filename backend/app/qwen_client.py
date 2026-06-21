@@ -111,7 +111,7 @@ def qwen_vision_json(
     system: str, image: str, user: str, schema: Type[T], model: Optional[str] = None, retries: int = 1
 ) -> T:
     """Image + text -> schema-validated Pydantic object (Continuity Court)."""
-    messages = [
+    messages: list[dict] = [
         {"role": "system", "content": system},
         {"role": "user", "content": [{"type": "text", "text": user}, _image_content(image)]},
     ]
