@@ -18,7 +18,7 @@ Track 2 - AI Showrunner
 
 Circle Take turns a short drama brief into a supervised episode workflow. It creates Actor, Style, and Story Contracts; builds a storyboard slate; generates video with Wan / HappyHorse; uses Qwen to judge continuity failures; reshoots only the broken shot; and stores approved story and visual anchors as memory for the next episode.
 
-The signature demo shows Luna, a fictional black cat, losing her required red ribbon while a broken alarm clock drifts from a paper dial to a digital screen. Circle Take yells CUT, runs a Qwen Continuity Court verdict, reshoots Shot 2 only, approves the corrected take, and stores the approved visual anchor in Red-Thread Memory.
+The signature demo shows Luna, a fictional black cat, losing her required identity markers (yellow bead eyes, crescent chest patch, red collar) while a broken alarm clock drifts. Circle Take yells CUT, runs a real Qwen Continuity Court verdict (VERDICT: FAIL), and reshoots Shot 2 only. The honest part — and the whole point — is the Anchor Gate: in the live run it scored the reshoot identity 15/100 and **quarantined it**. Circle Take refuses to greenlight a take it can't verify, even its own reshoot, so only approved anchors become Red-Thread Memory. The tagline: reshoot the shot, not the show.
 
 ## Inspiration
 
@@ -95,20 +95,23 @@ https://github.com/ComBba/circle-take
 
 ## Demo Video URL
 
-Video is **already produced**: `artifacts/demo/circle-take-demo.mp4` (1080p, ~108 s, < 3:00).
-Upload it to YouTube/Vimeo/Youku per `docs/demo_youtube_kit.md` (title/description/tags ready),
-then replace this line with the watch URL.
+https://youtu.be/QZrLzBsiJbo
 
-[FILL: paste the public YouTube/Vimeo/Youku URL here after upload]
+(1080p, ~2:23, < 3:00. Set visibility to Public or Unlisted before submitting.)
 
 ## Live Demo / Testing URL
 
-Run free locally (no account, no paid cloud):
+**Live (click to run, no install):** https://circle-take-145226765474.us-central1.run.app/ui/
+
+Hosted on Google Cloud Run in fixture mode (deterministic golden path, no credentials, no
+per-request cost). The backend uses Qwen Cloud + Alibaba Cloud OSS at runtime in live mode —
+Alibaba usage proof: `backend/app/oss_storage.py`.
+
+Or run free locally:
 ```bash
 git clone https://github.com/ComBba/circle-take && cd circle-take
 docker compose up --build      # -> http://localhost:8000/ui
 ```
-[Optional public URL: `cloudflared tunnel --url http://localhost:8000` — FILL with the tunnel URL if used.]
 
 ## Testing Instructions
 
