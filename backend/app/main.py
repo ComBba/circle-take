@@ -80,6 +80,16 @@ def _take_marker(n: int):
     return {"source": "fixture", "pending": "QWEN_API_KEY for live Wan"}
 
 
+def _public_artifacts(artifacts: dict) -> dict:
+    """Drop heavy internal fields (the base64 Court frame) from API responses."""
+    out = {}
+    for key, val in artifacts.items():
+        if isinstance(val, dict) and "frame_data_url" in val:
+            val = {k: v for k, v in val.items() if k != "frame_data_url"}
+        out[key] = val
+    return out
+
+
 def _state(store: Store, eid: str) -> EpisodeState:
     ep = store.get_episode(eid)
     if ep is None:
@@ -88,7 +98,7 @@ def _state(store: Store, eid: str) -> EpisodeState:
         episode_id=ep["episode_id"],
         state=ep["state"],
         title=ep["title"],
-        artifacts=ep["artifacts"],
+        artifacts=_public_artifacts(ep["artifacts"]),
     )
 
 
@@ -259,7 +269,7 @@ def report(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
         episode_id=ep["episode_id"],
         state=ep["state"],
         title=ep["title"],
-        artifacts=ep["artifacts"],
+        artifacts=_public_artifacts(ep["artifacts"]),
     )
 
 
