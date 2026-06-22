@@ -355,10 +355,9 @@ async function renderStory(d){
     setStage('mem'); const mem=await d.memory();
     await reveal(scene(cue8(mem.gate))); await reveal(scene(cue9(mem.memory)));
     pipe.querySelectorAll('span').forEach(s=>s.classList.add('done'));
-    const cta=d.live?'':`<button class="btn primary" id="endrun" style="margin-top:1.4rem">▶ Now run your own live episode →</button>`;
-    const end=scene(`<div class="closing"><div class="big">Only approved takes become memory.</div>${cta}</div>`);
-    await reveal(end);
-    const er=$('#endrun'); if(er)er.onclick=runLive;
+    // Watch the loop = pure auto-narrative: no login prompt. (Run-your-own lives in
+    // the hero CTA + the fixed top-right Sign in chip.)
+    await reveal(scene(`<div class="closing"><div class="big">Only approved takes become memory.</div></div>`));
   }catch(e){scene(`<div class="err">⚠ ${esc(e.message)}<br>Try again, or set the API base with ⚙.</div>`).classList.add('in');}
   finally{busy=false;$('#roll').disabled=$('#runlive').disabled=false;}
 }
