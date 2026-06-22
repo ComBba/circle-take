@@ -206,3 +206,19 @@ def test_review_endpoint_409_when_take_not_ready(monkeypatch):
     r = c.post(f"/api/episodes/{eid}/review")
     assert r.status_code == 409 and "generating" in r.json()["detail"]
     app.dependency_overrides.clear()
+
+
+def test_state_response_strips_frame_data_url(monkeypatch):
+    monkeypatch.setattr(pipeline, "generate_text", lambda s, e, b: None)
+    monkeypatch.setattr(pipeline, "start_take", lambda s, e, n, p: None)
+    c = _live_client(monkeypatch)
+    eid = c.post("/api/episodes", json={"title": "X"}).json()["episode_id"]
+    store = app.dependency_overrides[get_store]()
+    store.put_artifact(
+        eid, "take_1",
+        {"status": "succeeded", "video_url": "https://oss/v.mp4", "frame_data_url": "data:image/png;base64,AAA"},
+    )
+    t1 = c.get(f"/api/episodes/{eid}").json()["artifacts"]["take_1"]
+    assert t1["video_url"] == "https://oss/v.mp4"
+    assert "frame_data_url" not in t1  # heavy internal field never shipped
+    app.dependency_overrides.clear()

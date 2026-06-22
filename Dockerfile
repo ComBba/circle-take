@@ -10,6 +10,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# System deps: ffmpeg extracts the Take frame the live Continuity Court judges.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install deps first for layer caching (only requirements change busts the cache).
 COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
