@@ -1,91 +1,117 @@
-"""SQLite persistence for episodes and their artifacts.
+"""Persistence for episodes and their artifacts (SQLAlchemy 2.0).
 
-Single-file store; one row per episode plus a key/value artifact table holding
-JSON blobs (contracts, verdicts, memory, report). See docs/PLAN.md Phase 1.2.
+DATABASE_URL drives the backend: SQLite for local/tests, Postgres (Neon) in prod.
+Same public ``Store`` contract as Phase 1 (docs/PLAN.md 1.2) — five methods over an
+``episodes`` row plus a key/value ``artifacts`` table holding JSON blobs — so the
+fixture-first endpoints and their regression tests are unaffected by the engine swap.
 """
 from __future__ import annotations
 
-import json
 import os
-import sqlite3
 import uuid
 from typing import Any, Optional
 
-DEFAULT_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./circle_take.db")
+from sqlalchemy import JSON, create_engine, select
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    Session,
+    mapped_column,
+    sessionmaker,
+)
+
+DEFAULT_DATABASE_URL = "sqlite:///./circle_take.db"
 
 
-def _resolve_path(database_url: Optional[str]) -> str:
-    url = database_url or DEFAULT_DATABASE_URL
-    return url[len("sqlite:///"):] if url.startswith("sqlite:///") else url
+def _normalize_url(arg: Optional[str]) -> str:
+    """Turn a DATABASE_URL / bare path into a SQLAlchemy URL.
+
+    - ``None`` -> env ``DATABASE_URL`` or the local SQLite default.
+    - bare filesystem path (tests pass ``tempfile`` paths) -> ``sqlite:///`` URL.
+    - Neon-style ``postgres://`` / ``postgresql://`` -> pinned ``+psycopg`` driver.
+    """
+    url = arg or os.getenv("DATABASE_URL") or DEFAULT_DATABASE_URL
+    if "://" not in url:  # bare path -> sqlite (absolute needs 4 slashes)
+        return "sqlite:////" + url.lstrip("/") if os.path.isabs(url) else "sqlite:///" + url
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+    return url
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class Episode(Base):
+    __tablename__ = "episodes"
+
+    id: Mapped[str] = mapped_column(primary_key=True)
+    title: Mapped[str]
+    state: Mapped[str]
+
+
+class Artifact(Base):
+    __tablename__ = "artifacts"
+
+    episode_id: Mapped[str] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(primary_key=True)
+    value: Mapped[Any] = mapped_column(JSON)
 
 
 class Store:
-    def __init__(self, db_path: Optional[str] = None):
-        self.path = db_path or _resolve_path(None)
-        self._init()
+    def __init__(self, db_path_or_url: Optional[str] = None):
+        url = _normalize_url(db_path_or_url)
+        # SQLite + FastAPI TestClient/uvicorn can touch a connection across threads.
+        connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
+        self.engine = create_engine(url, connect_args=connect_args, future=True)
+        self._Session = sessionmaker(self.engine, expire_on_commit=False)
+        Base.metadata.create_all(self.engine)
 
-    def _conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.path)
-        conn.row_factory = sqlite3.Row
-        return conn
-
-    def _init(self) -> None:
-        with self._conn() as c:
-            c.execute(
-                "CREATE TABLE IF NOT EXISTS episodes ("
-                "id TEXT PRIMARY KEY, title TEXT NOT NULL, state TEXT NOT NULL)"
-            )
-            c.execute(
-                "CREATE TABLE IF NOT EXISTS artifacts ("
-                "episode_id TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, "
-                "PRIMARY KEY (episode_id, key))"
-            )
+    def _session(self) -> Session:
+        return self._Session()
 
     def create_episode(self, title: str, state: str) -> str:
         eid = "ep" + uuid.uuid4().hex[:8]
-        with self._conn() as c:
-            c.execute(
-                "INSERT INTO episodes (id, title, state) VALUES (?, ?, ?)",
-                (eid, title, state),
-            )
+        with self._session() as s:
+            s.add(Episode(id=eid, title=title, state=state))
+            s.commit()
         return eid
 
     def get_episode(self, eid: str) -> Optional[dict]:
-        with self._conn() as c:
-            row = c.execute(
-                "SELECT id, title, state FROM episodes WHERE id = ?", (eid,)
-            ).fetchone()
-            if row is None:
+        with self._session() as s:
+            ep = s.get(Episode, eid)
+            if ep is None:
                 return None
             arts = {
-                r["key"]: json.loads(r["value"])
-                for r in c.execute(
-                    "SELECT key, value FROM artifacts WHERE episode_id = ?", (eid,)
-                )
+                a.key: a.value
+                for a in s.scalars(select(Artifact).where(Artifact.episode_id == eid))
             }
             return {
-                "episode_id": row["id"],
-                "title": row["title"],
-                "state": row["state"],
+                "episode_id": ep.id,
+                "title": ep.title,
+                "state": ep.state,
                 "artifacts": arts,
             }
 
     def update_status(self, eid: str, state: str) -> None:
-        with self._conn() as c:
-            c.execute("UPDATE episodes SET state = ? WHERE id = ?", (state, eid))
+        with self._session() as s:
+            ep = s.get(Episode, eid)
+            if ep is not None:
+                ep.state = state
+                s.commit()
 
     def put_artifact(self, eid: str, key: str, value: Any) -> None:
-        with self._conn() as c:
-            c.execute(
-                "INSERT INTO artifacts (episode_id, key, value) VALUES (?, ?, ?) "
-                "ON CONFLICT(episode_id, key) DO UPDATE SET value = excluded.value",
-                (eid, key, json.dumps(value)),
-            )
+        with self._session() as s:
+            art = s.get(Artifact, {"episode_id": eid, "key": key})
+            if art is None:
+                s.add(Artifact(episode_id=eid, key=key, value=value))
+            else:
+                art.value = value
+            s.commit()
 
     def get_artifact(self, eid: str, key: str) -> Any:
-        with self._conn() as c:
-            row = c.execute(
-                "SELECT value FROM artifacts WHERE episode_id = ? AND key = ?",
-                (eid, key),
-            ).fetchone()
-            return json.loads(row["value"]) if row else None
+        with self._session() as s:
+            art = s.get(Artifact, {"episode_id": eid, "key": key})
+            return art.value if art is not None else None

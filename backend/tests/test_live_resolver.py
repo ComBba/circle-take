@@ -27,6 +27,8 @@ def test_take_marker_live(monkeypatch, tmp_path):
     assert m["source"] == "live" and "take1" in m["video"]
 
 
-def test_take_marker_fixture(monkeypatch):
-    monkeypatch.setattr(config, "is_live", lambda: False)
+def test_take_marker_fixture(monkeypatch, tmp_path):
+    # _take_marker keys off bundled-file presence (PR #23), not is_live: an empty
+    # LIVE dir => no clip => fixture marker.
+    monkeypatch.setattr(main, "LIVE", tmp_path)
     assert main._take_marker(1)["source"] == "fixture"
