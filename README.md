@@ -15,14 +15,25 @@ Circle Take is a self-correcting production loop for generated episodes. It catc
 
 ## Status
 
+An operational multi-user platform, not just a demo: sign up with email, and each
+episode runs the **real** Qwen3.7 + Wan 2.7 pipeline per request, scoped to you.
+
 | Area | State |
 |---|---|
-| Orchestrator (state machine + 7 endpoints) | ✅ working over golden-path fixtures, 59 pytest green, verified in Docker |
-| Live Qwen3.7 contracts / Continuity Court | ⏳ pending `QWEN_API_KEY` (code path ready) |
-| Live Wan 2.7 video gen / reshoot | ⏳ pending `QWEN_API_KEY` |
-| Alibaba Cloud deploy + OSS | ⏳ pending credentials |
+| Orchestrator (state machine + endpoints) | ✅ 87 pytest green, verified in Docker |
+| Email + password auth (JWT), per-user episodes | ✅ register/login, argon2, bearer-protected |
+| Live Qwen3.7 contracts / Continuity Court (per request) | ✅ real Qwen-vision verdict from the generated frame |
+| Live Wan 2.7 video gen / reshoot (async per request) | ✅ create→poll, mp4 mirrored to Alibaba OSS |
+| Persistence | ✅ SQLAlchemy + `DATABASE_URL` (SQLite local, Postgres prod) |
+| Deploy (Cloud Run + Cloud SQL Postgres) | ✅ `deployment/cloud_run_deploy.md` |
 
-> **How "live" works (honest):** the real AI pipeline — Qwen3.7 contracts/Continuity Court + Wan 2.7 video — runs via `scripts/run_golden_path_live.py` (a real agent run; long video generation is not done per HTTP request). In live mode the HTTP API **serves those generated artifacts** from `artifacts/live/` (else the documented fixtures). Fixtures are never presented as live output; real evidence is committed in `docs/evidence/golden-path/`. Note: the live Anchor Gate honestly returns `quarantine` when a generated take doesn't fully match the contracts — the gate is strict, not a rubber stamp.
+> **How "live" works (honest):** with `APP_ENV=live`, each authenticated episode makes
+> **real per-request calls** — Qwen3.7 generates the contracts/storyboard, Wan 2.7 renders
+> Take 1/Take 2 (async, 1–5 min, polled via `/take/{n}/poll`), and Qwen3.7-vision judges the
+> actual generated frame in the Continuity Court. Nothing is staged: the verdict comes from the
+> real frame, and the Anchor Gate returns `quarantine` when a take doesn't match the contracts —
+> the gate is strict, not a rubber stamp. `APP_ENV=fixture` runs the same loop over golden-path
+> artifacts for a deterministic, key-free demo (never presented as live output).
 
 ## Demo
 
@@ -54,25 +65,36 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload     # http://localhost:8000
 ```
 
-### Walk the golden path
+### Walk the golden path (auth required)
 
 ```bash
-EID=$(curl -s -X POST localhost:8000/api/episodes \
-  -H 'content-type: application/json' -d '{"title":"The Last Alarm"}' \
-  | python -c "import sys,json;print(json.load(sys.stdin)['episode_id'])")
-curl -s -X POST localhost:8000/api/episodes/$EID/generate   # -> TAKE_1_READY
-curl -s -X POST localhost:8000/api/episodes/$EID/review     # -> CUT_REQUIRED
-curl -s -X POST localhost:8000/api/episodes/$EID/reshoot    # -> TAKE_2_READY
-curl -s -X POST localhost:8000/api/episodes/$EID/memory     # -> AUTO_GREENLIT
-curl -s localhost:8000/api/episodes/$EID/report             # full production report
+B=http://localhost:8000
+# 1) sign up -> JWT
+TOK=$(curl -s -X POST $B/api/auth/register -H 'content-type: application/json' \
+  -d '{"email":"you@example.com","password":"password123"}' \
+  | python -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+H="Authorization: Bearer $TOK"
+# 2) per-user episode (every /api/episodes* requires the token; 401 otherwise)
+EID=$(curl -s -X POST $B/api/episodes -H "$H" -H 'content-type: application/json' \
+  -d '{"title":"The Last Alarm"}' | python -c "import sys,json;print(json.load(sys.stdin)['episode_id'])")
+curl -s -X POST $B/api/episodes/$EID/generate -H "$H"   # -> TAKE_1_READY (live: starts Wan Take 1)
+# live mode: poll until take_1.status == succeeded
+curl -s -X POST $B/api/episodes/$EID/take/1/poll -H "$H"
+curl -s -X POST $B/api/episodes/$EID/review   -H "$H"   # -> CUT_REQUIRED (live: real Qwen-vision verdict)
+curl -s -X POST $B/api/episodes/$EID/reshoot  -H "$H"   # -> TAKE_2_READY (live: starts Wan Take 2)
+curl -s -X POST $B/api/episodes/$EID/take/2/poll -H "$H"
+curl -s -X POST $B/api/episodes/$EID/memory   -H "$H"   # -> AUTO_GREENLIT
+curl -s $B/api/episodes/$EID/report -H "$H"             # full production report
 ```
+
+In `fixture` mode the `take/{n}/poll` calls are no-ops (takes are immediately ready).
 
 ### Tests
 
 ```bash
 cd backend && source .venv/bin/activate
 pip install -r requirements-dev.txt
-python -m pytest -q       # 59 passed
+python -m pytest -q       # 87 passed, 1 skipped (Postgres roundtrip: set TEST_DATABASE_URL)
 ```
 
 ## Qwen Cloud Usage
@@ -90,28 +112,35 @@ Endpoint: `dashscope-intl.aliyuncs.com` (chat: `/compatible-mode/v1`; video: asy
 
 ```mermaid
 flowchart LR
-  UI["Demo UI /ui"] -->|REST| API
+  UI["UI /ui (login + live poll)"] -->|"REST + Bearer JWT"| API
   subgraph API["FastAPI orchestrator"]
-    EP["7 endpoints"]
+    AUTH["auth (argon2 + JWT)"]
+    EP["episode + auth endpoints"]
     SM["state machine"]
-    DB[("SQLite")]
+    DB[("Postgres / SQLite via DATABASE_URL")]
+    AUTH --> EP
     EP --> SM
     EP --> DB
   end
-  API --> QC["qwen_client"]
-  API --> VT["video_tasks"]
-  API --> OSS["oss_storage"]
+  API --> PIPE["pipeline (live, per request)"]
+  PIPE --> QC["qwen_client"]
+  PIPE --> VT["video_tasks"]
+  PIPE --> OSS["oss_storage"]
   QC -->|"qwen3.7-plus chat+vision"| QWEN["Qwen Cloud"]
   VT -->|"wan2.7-t2v create→poll"| WAN["Wan 2.7"]
   OSS -->|"put_object"| BUCKET[("Alibaba OSS")]
 ```
+
+Deployed on **Google Cloud Run** with a persistent **Cloud SQL Postgres** database
+(accounts + episodes survive scale-to-zero cold starts) — see
+[`deployment/cloud_run_deploy.md`](deployment/cloud_run_deploy.md).
 
 Full diagrams (system / state machine / live sequence) + `architecture.png` in [`docs/architecture.md`](docs/architecture.md).
 State machine: `DRAFT → CONTRACTED → STORYBOARDED → GENERATING → TAKE_1_READY → REVIEWING → CUT_REQUIRED → RESHOOTING → TAKE_2_READY → ANCHOR_APPROVED → REMEMBERED → AUTO_GREENLIT`.
 
 ## Environment Variables
 
-See `.env.example`. Model IDs are centralized there. Live AI requires `QWEN_API_KEY`; deployment/storage requires `ALIBABA_CLOUD_*`.
+See `.env.example`. Model IDs are centralized there. Live AI requires `QWEN_API_KEY`; auth requires `JWT_SECRET` (32+ bytes); persistence uses `DATABASE_URL` (SQLite locally, Postgres in prod); deployment/storage requires `ALIBABA_CLOUD_*`.
 
 ## Deployment Proof
 
