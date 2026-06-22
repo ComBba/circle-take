@@ -12,6 +12,7 @@ import uuid
 from typing import Any, Optional
 
 from sqlalchemy import JSON, create_engine, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -50,6 +51,7 @@ class Episode(Base):
     id: Mapped[str] = mapped_column(primary_key=True)
     title: Mapped[str]
     state: Mapped[str]
+    user_id: Mapped[Optional[str]] = mapped_column(default=None, index=True)
 
 
 class Artifact(Base):
@@ -58,6 +60,20 @@ class Artifact(Base):
     episode_id: Mapped[str] = mapped_column(primary_key=True)
     key: Mapped[str] = mapped_column(primary_key=True)
     value: Mapped[Any] = mapped_column(JSON)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(unique=True, index=True)
+    password_hash: Mapped[str]
+
+
+def _user_dict(u: Optional[User]) -> Optional[dict]:
+    if u is None:
+        return None
+    return {"id": u.id, "email": u.email, "password_hash": u.password_hash}
 
 
 class Store:
@@ -72,10 +88,12 @@ class Store:
     def _session(self) -> Session:
         return self._Session()
 
-    def create_episode(self, title: str, state: str) -> str:
+    def create_episode(
+        self, title: str, state: str, user_id: Optional[str] = None
+    ) -> str:
         eid = "ep" + uuid.uuid4().hex[:8]
         with self._session() as s:
-            s.add(Episode(id=eid, title=title, state=state))
+            s.add(Episode(id=eid, title=title, state=state, user_id=user_id))
             s.commit()
         return eid
 
@@ -92,8 +110,45 @@ class Store:
                 "episode_id": ep.id,
                 "title": ep.title,
                 "state": ep.state,
+                "user_id": ep.user_id,
                 "artifacts": arts,
             }
+
+    def list_episodes(self, user_id: str) -> list[dict]:
+        with self._session() as s:
+            eps = s.scalars(
+                select(Episode).where(Episode.user_id == user_id).order_by(Episode.id)
+            )
+            return [
+                {
+                    "episode_id": ep.id,
+                    "title": ep.title,
+                    "state": ep.state,
+                    "user_id": ep.user_id,
+                }
+                for ep in eps
+            ]
+
+    # --- users ---
+    def create_user(self, email: str, password_hash: str) -> Optional[str]:
+        """Return new user id, or None if the email is already registered."""
+        uid = "us" + uuid.uuid4().hex[:8]
+        with self._session() as s:
+            s.add(User(id=uid, email=email, password_hash=password_hash))
+            try:
+                s.commit()
+            except IntegrityError:
+                s.rollback()
+                return None
+        return uid
+
+    def get_user(self, user_id: str) -> Optional[dict]:
+        with self._session() as s:
+            return _user_dict(s.get(User, user_id))
+
+    def get_user_by_email(self, email: str) -> Optional[dict]:
+        with self._session() as s:
+            return _user_dict(s.scalar(select(User).where(User.email == email)))
 
     def update_status(self, eid: str, state: str) -> None:
         with self._session() as s:

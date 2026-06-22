@@ -11,7 +11,14 @@ def _client():
     fd, path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     app.dependency_overrides[get_store] = lambda: Store(path)
-    return TestClient(app)
+    c = TestClient(app)
+    # Episode endpoints require auth now: register a user and carry the token.
+    token = c.post(
+        "/api/auth/register",
+        json={"email": "test@circle.take", "password": "password123"},
+    ).json()["access_token"]
+    c.headers.update({"Authorization": f"Bearer {token}"})
+    return c
 
 
 def test_health():
