@@ -80,6 +80,11 @@ def _take_marker(n: int):
     return {"source": "fixture", "pending": "QWEN_API_KEY for live Wan"}
 
 
+def _demo_take(n: int) -> dict:
+    # Canonical demo clips live at OSS demo/; _public_artifacts re-signs the key.
+    return {"source": "demo", "status": "succeeded", "shot": "S02", "oss_key": f"demo/take{n}_S02.mp4"}
+
+
 def _public_artifacts(artifacts: dict) -> dict:
     """Shape artifacts for API responses: drop the heavy base64 Court frame, and
     re-sign each live take's private OSS object into a fresh presigned video_url."""
@@ -136,6 +141,32 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "circle-take", "mode": config.app_env()}
+
+
+@app.get("/api/demo")
+def demo():
+    """Public, no-auth golden-path walkthrough for the landing — read-only fixtures
+    plus the canonical demo clips (presigned). Lets anyone watch the loop before sign-in."""
+    arts = {
+        "brief": _load_json("brief.json"),
+        "actor_contracts": _load_json("actor_contracts.json"),
+        "style_contract": _load_json("style_contract.json"),
+        "story_contract": _load_json("story_contract.json"),
+        "storyboard_slate": _load_json("storyboard_slate.json"),
+        "shot_risk_ledger": _load_json("shot_risk_ledger.json"),
+        "take_1": _demo_take(1),
+        "continuity_verdict": _load_json("continuity_verdict_before.json"),
+        "reshoot_spell": _load_text("reshoot_spell.txt"),
+        "take_2": _demo_take(2),
+        "anchor_gate": _load_json("anchor_gate.json"),
+        "red_thread_memory": _load_json("red_thread_memory.json"),
+    }
+    return {
+        "episode_id": "demo",
+        "state": "AUTO_GREENLIT",
+        "title": "The Last Alarm",
+        "artifacts": _public_artifacts(arts),
+    }
 
 
 # --- Auth ---

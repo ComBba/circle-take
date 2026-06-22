@@ -83,3 +83,22 @@ def test_backward_transition_rejected_409():
     # /review targets CUT_REQUIRED, earlier than AUTO_GREENLIT -> backward -> 409
     assert c.post(f"/api/episodes/{eid}/review").status_code == 409
     app.dependency_overrides.clear()
+
+
+def test_demo_endpoint_is_public_and_complete():
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    app.dependency_overrides[get_store] = lambda: Store(path)
+    c = TestClient(app)  # deliberately NO auth header
+    r = c.get("/api/demo")
+    assert r.status_code == 200  # anyone can watch the loop, no sign-in
+    body = r.json()
+    a = body["artifacts"]
+    assert body["state"] == "AUTO_GREENLIT"
+    assert a["brief"]["logline"]
+    assert a["actor_contracts"]["actors"]
+    assert a["continuity_verdict"]["verdict"] == "fail"
+    assert a["take_1"]["oss_key"] == "demo/take1_S02.mp4"
+    assert a["take_2"]["oss_key"] == "demo/take2_S02.mp4"
+    assert a["red_thread_memory"]["auto_greenlight"]["episode_2_title"] == "The Delivery Box"
+    app.dependency_overrides.clear()

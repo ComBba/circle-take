@@ -141,14 +141,24 @@
 <body>
 <div class="adv" id="adv"><span>API base</span><input id="api" /><button class="btn ghost" id="advClose" style="padding:.4rem .8rem">close</button></div>
 
-<div id="authbar" style="position:fixed;top:0;left:0;right:0;z-index:9996;display:flex;gap:.4rem;align-items:center;justify-content:center;flex-wrap:wrap;padding:.45rem .8rem;background:#0e0e12ee;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:.72rem">
-  <span style="color:var(--muted);letter-spacing:.1em">SIGN IN TO RUN A LIVE EPISODE</span>
-  <input id="email" type="email" placeholder="email" autocomplete="email" style="background:#16161b;border:1px solid var(--line);color:var(--fg);padding:.35rem .55rem;border-radius:4px;font:inherit;width:170px" />
-  <input id="pw" type="password" placeholder="password (8+)" autocomplete="current-password" style="background:#16161b;border:1px solid var(--line);color:var(--fg);padding:.35rem .55rem;border-radius:4px;font:inherit;width:140px" />
-  <button class="btn" id="signin" style="padding:.35rem .7rem">Sign in</button>
-  <button class="btn ghost" id="register" style="padding:.35rem .7rem">Register</button>
+<div id="userchip" style="position:fixed;top:.7rem;right:1rem;z-index:60;font-family:var(--mono);font-size:.7rem;display:flex;gap:.5rem;align-items:center">
   <span id="who" style="color:var(--green)"></span>
-  <button class="btn ghost" id="signout" style="padding:.35rem .7rem;display:none">Sign out</button>
+  <button class="btn ghost" id="opensignin" style="padding:.3rem .7rem">Sign in</button>
+  <button class="btn ghost" id="signout" style="padding:.3rem .7rem;display:none">Sign out</button>
+</div>
+
+<div id="authmodal" style="position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:#05050aee;backdrop-filter:blur(6px);padding:1rem">
+  <div style="background:linear-gradient(180deg,var(--panel),var(--ink2));border:1px solid var(--line);border-radius:14px;padding:1.7rem 1.5rem;width:min(390px,94vw)">
+    <div style="font-family:var(--disp);font-size:1.7rem;color:var(--paper);text-transform:uppercase;letter-spacing:.02em">Run your own episode</div>
+    <p style="color:var(--muted);font-size:.88rem;margin:.4rem 0 1.1rem;line-height:1.5">Watching the loop needs no account. To generate <em style="color:var(--amber);font-style:normal;font-weight:700">your own</em> live episode — real Qwen3.7 + Wan 2.7 — sign in.</p>
+    <input id="email" type="email" placeholder="email" autocomplete="email" style="width:100%;background:#16161b;border:1px solid var(--line);color:var(--fg);padding:.65rem .7rem;border-radius:6px;font-family:var(--mono);margin-bottom:.5rem" />
+    <input id="pw" type="password" placeholder="password (8+ chars)" autocomplete="current-password" style="width:100%;background:#16161b;border:1px solid var(--line);color:var(--fg);padding:.65rem .7rem;border-radius:6px;font-family:var(--mono);margin-bottom:1rem" />
+    <div style="display:flex;gap:.5rem">
+      <button class="btn primary" id="signin" style="flex:1;padding:.65rem">Sign in</button>
+      <button class="btn ghost" id="register" style="flex:1;padding:.65rem">Register</button>
+    </div>
+    <button class="btn ghost" id="authclose" style="width:100%;margin-top:.6rem;padding:.5rem;font-size:.8rem;border:0">Maybe later</button>
+  </div>
 </div>
 
 <header class="hero" id="top">
@@ -159,13 +169,23 @@
   <div class="slate-chip">SCENE 01 · TAKE 01 · <b>ROLL</b></div>
   <h1 class="title">Circle<br>Take</h1>
   <div class="tagline">Bad takes don't make the cut.</div>
-  <p class="sub">A self-correcting production loop for generated episodes. It catches broken continuity, reshoots only the failed shot, and remembers only approved takes. <b style="color:var(--fg)">Powered by Qwen Cloud.</b></p>
+  <p class="sub">Generative video can make anything — and won't tell you when it's wrong. <b style="color:var(--fg)">Circle Take is the showrunner that catches it:</b> it judges every take, reshoots only the shot that broke, and remembers only what passed. <b style="color:var(--fg)">Powered by Qwen Cloud.</b></p>
   <div class="cta-row">
-    <button class="btn primary" id="roll">▶ Roll the demo</button>
-    <a class="btn ghost" href="https://github.com/ComBba/circle-take" target="_blank">View on GitHub</a>
+    <button class="btn primary" id="roll">▶ Watch the loop</button>
+    <button class="btn ghost" id="runlive">Run your own live →</button>
+    <a class="btn ghost" href="https://github.com/ComBba/circle-take" target="_blank">GitHub</a>
   </div>
-  <div class="scroll-hint">the show plays itself<span>↓</span></div>
+  <div class="scroll-hint">no sign-in needed to watch<span>↓</span></div>
 </header>
+
+<section class="wrap" style="padding:5rem 1.25rem 1rem;max-width:840px">
+  <div style="font-family:var(--mono);font-size:.7rem;letter-spacing:.26em;color:var(--muted);text-transform:uppercase;margin-bottom:1.3rem">The problem with generative video</div>
+  <div style="font-family:var(--disp);text-transform:uppercase;line-height:1.04;font-size:clamp(2rem,5.4vw,3.6rem);color:var(--paper)">
+    A model can generate <span style="color:var(--amber)">anything</span>.<br>
+    It can't tell you the take is <span style="color:var(--red-soft)">wrong</span>.
+  </div>
+  <p style="color:var(--muted);font-size:1.08rem;max-width:580px;margin:1.5rem 0 0;line-height:1.65">So the cat's red ribbon vanishes between shots, the paper dial turns digital — and nobody notices until it ships. Circle Take treats every generated take like a real production: <b style="color:var(--fg)">nothing reaches the cut until it's earned it.</b> Below is the full loop, on a real episode. <b style="color:var(--amber)">Press play — no account needed.</b></p>
+</section>
 
 <nav class="pipeline" id="pipeline" aria-label="Track 2 pipeline">
   <span data-st="script">Scriptwriting</span><span data-st="board">Storyboarding</span>
@@ -241,27 +261,29 @@ let busy=false;
 fetch(api.value+'/health').then(r=>r.json()).then(d=>$('#mode').innerHTML='mode · <b>'+d.mode+'</b>').catch(()=>{});
 $('#gear').onclick=()=>$('#adv').classList.toggle('open'); $('#advClose').onclick=()=>$('#adv').classList.remove('open');
 
-// --- auth: email+password -> JWT (stored locally), sent on every API call ---
+// --- auth: optional. Watching the loop is public; sign-in only gates live runs ---
 let token=localStorage.getItem('ct_token')||'';
 let whoEmail=localStorage.getItem('ct_email')||'';
 function setAuthUI(){
-  const on=!!token;
-  $('#who').textContent=on?('● '+whoEmail):'';
-  $('#signout').style.display=on?'':'none';
-  $('#email').style.display=$('#pw').style.display=$('#signin').style.display=$('#register').style.display=on?'none':'';
-  $('#roll').textContent=on?'▶ Roll a live episode':'▶ Sign in to roll';
+  $('#who').textContent=token?('● '+whoEmail):'';
+  $('#signout').style.display=token?'':'none';
+  $('#opensignin').style.display=token?'none':'';
 }
+function openAuth(){$('#authmodal').style.display='flex';$('#email').focus();}
+function closeAuth(){$('#authmodal').style.display='none';}
 async function doAuth(path){
   const email=$('#email').value.trim(), password=$('#pw').value;
   if(!email||password.length<8){alert('Enter an email and an 8+ char password.');return;}
   try{
     const r=await fetch(api.value+'/api/auth/'+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,password})});
-    if(!r.ok){alert(path+' failed ('+r.status+(r.status===409?' — email already registered, try Sign in':'')+(r.status===401?' — wrong email or password':'')+')');return;}
-    const d=await r.json(); token=d.access_token; whoEmail=email;
+    if(!r.ok){alert(path+' failed ('+r.status+(r.status===409?' — already registered, try Sign in':'')+(r.status===401?' — wrong email or password':'')+')');return;}
+    token=(await r.json()).access_token; whoEmail=email;
     localStorage.setItem('ct_token',token); localStorage.setItem('ct_email',email);
-    $('#pw').value=''; setAuthUI();
+    $('#pw').value=''; setAuthUI(); closeAuth(); runLive();
   }catch(e){alert('Network error: '+e.message);}
 }
+$('#opensignin').onclick=openAuth;
+$('#authclose').onclick=closeAuth;
 $('#signin').onclick=()=>doAuth('login');
 $('#register').onclick=()=>doAuth('register');
 $('#signout').onclick=()=>{token='';whoEmail='';localStorage.removeItem('ct_token');localStorage.removeItem('ct_email');setAuthUI();};
@@ -277,9 +299,8 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 async function reveal(el){el.classList.add('in');el.scrollIntoView({behavior:'smooth',block:'center'});await wait(950);}
 async function call(m,p,b){const h={'content-type':'application/json'};if(token)h['Authorization']='Bearer '+token;const r=await fetch(api.value+p,{method:m,headers:h,body:b?JSON.stringify(b):undefined});if(!r.ok)throw new Error(p+' → '+r.status);return r.json();}
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const vid=n=>`${api.value}/api/media/${n}`;
-// Per-episode source: live OSS url > bundled demo media > stub.
-const srcOf=(tk,name)=>tk&&tk.video_url?tk.video_url:(tk&&tk.source==='live'?vid(name):null);
+// Per-take video source: the presigned OSS url the API returns (demo or live).
+const srcOf=tk=>tk&&tk.video_url?tk.video_url:null;
 // Live mode: Wan renders are async — poll until the take finishes (cap ~6 min).
 async function ensureTake(id,n,onTick){
   for(let i=0;i<45;i++){
@@ -294,57 +315,58 @@ async function ensureTake(id,n,onTick){
 }
 const mk=(step,title,stage)=>`<div class="marker"><span class="step">${step}</span> ${title}${stage?`<span class="stage">${stage}</span>`:''}</div>`;
 
-async function run(){
-  if(busy)return;
-  if(!token){$('#email').focus();$('#email').style.outline='2px solid var(--red)';setTimeout(()=>$('#email').style.outline='',1500);return;}
-  busy=true; $('#roll').disabled=true; reel.innerHTML=''; pipe.classList.add('on');
+// --- cue renderers (identical scenes whether the data is demo or live) ---
+const cue1=b=>mk('cue 1','The pitch','Brief')+`<div class="narr">A 15-second clay micro-drama: <em>The Last Alarm</em>. A broken alarm clock learns it'll be replaced — and a jealous cat, Luna, hides the evidence.</div><div class="card" style="font-family:var(--mono);font-size:.85rem;color:var(--slate)">${esc((b||{}).logline||'')}</div>`;
+const cue2=a=>mk('cue 2','Actor Contracts','Scriptwriting')+`<div class="narr">Scripty turns the brief into <em>identity contracts</em> — who each actor is, and which markers must never drift.</div><div class="grid">${((a.actor_contracts||{}).actors||[]).map(x=>`<div class="cast"><div class="role">${esc(x.role||'actor')}</div><div class="nm">${esc(x.display_name)}</div><div class="tags">${(x.fixed_markers||[]).slice(0,3).map(m=>`<span class="tag">${esc(m)}</span>`).join('')}${(x.forbidden_drift||[]).slice(0,1).map(m=>`<span class="tag no">✗ ${esc(m)}</span>`).join('')}</div></div>`).join('')}</div>`;
+const cue3=a=>mk('cue 3','Storyboard &amp; risk','Storyboarding')+`<div class="narr">Each shot is scored for identity risk before a frame exists. <em>Shot 2 is high risk</em> — Luna's tail hides the prop and her ribbon can vanish.</div><div class="grid">${((a.shot_risk_ledger||{}).risks||[]).map(s=>`<div class="shot ${s.risk_level==='high'?'high':''}"><div class="sid">${esc(s.shot_id)}</div><span class="badge ${esc(s.risk_level)}">${esc(s.risk_level)}</span></div>`).join('')}</div>`;
+const cue4=tk1=>{const s1=srcOf(tk1);return mk('cue 4','Take 1 · rolling','Video Generation')+`<div class="narr">Wan generates the shot. Watch closely — something's already wrong.</div><div class="monitor">${s1?`<video controls preload="metadata" src="${esc(s1)}"></video>`:`<div class="stub">🐈‍⬛</div>`}<div class="lbl"><span>SHOT 2 · TAKE 1</span><span class="rec" style="color:var(--red)">● REC</span></div></div>`;};
+const cue5=v=>mk('cue 5','Continuity Court','Review')+`<div class="narr">The take isn't trusted — it's <em>judged</em>. Qwen's vision model inspects the frame against the contracts.</div><div class="card ruling"><div class="verdict">VERDICT: ${esc((v.verdict||'').toUpperCase())}</div>${(v.violations||[]).map(x=>`<div class="viol"><span class="x">✗</span><span>${esc(x.detail||x.type||'continuity break')}</span></div>`).join('')}<div class="toggle" data-pre>▸ view the slate (raw JSON)</div><pre>${esc(JSON.stringify(v,null,2))}</pre></div>`;
+const cue6=spell=>mk('cue 6','Reshoot Spell','Editing')+`<div class="narr">A <em>delta-only</em> repair order — reshoot the broken shot, and only that shot.</div><div class="note">${esc(spell||'')}</div>`;
+const cue7=(tk1,tk2)=>{const s1=srcOf(tk1),s2=srcOf(tk2);return mk('cue 7','Take Two — the reveal','Editing')+`<div class="narr">Shots 1, 3 and 4 are untouched. Only Shot 2 gets a second take.</div><div class="ba"><div class="monitor">${s1?`<video controls preload="metadata" src="${esc(s1)}"></video>`:`<div class="stub">🐈‍⬛</div>`}<div class="lbl"><span>BEFORE</span><span class="rec">missing ribbon</span></div></div><div class="monitor">${s2?`<video controls preload="metadata" src="${esc(s2)}"></video>`:`<div class="stub">🐈‍⬛🎀</div>`}<div class="lbl"><span>TAKE TWO</span><span class="ok">restored</span></div></div></div>`;};
+const cue8=gt=>{const ok=gt.anchor_status==='approved';return mk('cue 8','Anchor Gate — the circle take','Memory')+`<div class="narr">Only an approved take gets <em>circled</em> and becomes memory. The gate is strict.</div><div class="card gate"><div class="scores"><div class="dial ${gt.identity_score<85?'bad':''}"><b>${gt.identity_score}</b><span>identity</span></div><div class="dial ${gt.style_score<85?'bad':''}"><b>${gt.style_score}</b><span>style</span></div><div class="dial ${gt.prop_score<85?'bad':''}"><b>${gt.prop_score}</b><span>prop</span></div></div><div class="stamp ${ok?'ok':'no'}"><span class="ring"></span>${ok?'CIRCLE TAKE':'QUARANTINE'}<span class="mk">${ok?'approved ✓':'try again'}</span></div></div>`;};
+const cue9=m=>mk('cue 9','Red-Thread Memory','Memory')+`<div class="narr">Only approved anchors become memory — pinned and threaded for the next episode.</div><div class="board"><div class="pins"><div class="pin" style="--r:-2deg"><div class="k">new fact</div>${esc(m.story_memory.new_fact)}</div><div class="pin" style="--r:1.5deg"><div class="k">relationship</div>${esc(m.story_memory.relationship_change)}</div><div class="pin" style="--r:-1deg"><div class="k">open thread</div>${esc(m.story_memory.open_thread)}</div></div>${m.auto_greenlight?`<div class="greenlight"><div><div class="k" style="font-family:var(--mono);font-size:.62rem;color:var(--muted);text-transform:uppercase">auto greenlight · next cold open</div><div class="ep">${esc(m.auto_greenlight.episode_2_title)}</div><div style="color:var(--muted);font-size:.9rem">${esc(m.auto_greenlight.cold_open)}</div></div><div style="font-size:2rem">🎬</div></div>`:''}</div>`;
+
+// --- data drivers: demo (public, instant) vs live (authed, polled) ---
+function demoDriver(a){return{live:false,
+  brief:async()=>a.brief, generate:async()=>a, take:async(n)=>a['take_'+n],
+  review:async()=>a.continuity_verdict, reshoot:async()=>a.reshoot_spell,
+  memory:async()=>({gate:a.anchor_gate,memory:a.red_thread_memory})};}
+function liveDriver(){let id,acc={};return{live:true,
+  brief:async()=>{const c=await call('POST','/api/episodes',{title:'The Last Alarm'});id=c.episode_id;acc=c.artifacts;return acc.brief;},
+  generate:async()=>{acc=(await call('POST',`/api/episodes/${id}/generate`)).artifacts;return acc;},
+  take:async(n)=>{let tk=acc['take_'+n];if(tk&&tk.status==='pending'){const r=scene(`<div class="narr" style="text-align:center">🎬 Wan is rendering Take ${n} live — <span id="p${n}">~2–4 min</span></div>`);await reveal(r);tk=await ensureTake(id,n,i=>{const e=$('#p'+n);if(e)e.textContent=((i+1)*8)+'s…';});r.remove();}return tk;},
+  review:async()=>{acc=(await call('POST',`/api/episodes/${id}/review`)).artifacts;return acc.continuity_verdict;},
+  reshoot:async()=>{acc=(await call('POST',`/api/episodes/${id}/reshoot`)).artifacts;return acc.reshoot_spell;},
+  memory:async()=>{acc=(await call('POST',`/api/episodes/${id}/memory`)).artifacts;return{gate:acc.anchor_gate,memory:acc.red_thread_memory};}};}
+
+async function renderStory(d){
+  if(busy)return; busy=true; $('#roll').disabled=$('#runlive').disabled=true; reel.innerHTML=''; pipe.classList.add('on');
   try{
-    const created=await call('POST','/api/episodes',{title:'The Last Alarm'}); const id=created.episode_id;
-    await reveal(scene(mk('cue 1','The pitch','Brief')+`<div class="narr">A 15-second clay micro-drama: <em>The Last Alarm</em>. A broken alarm clock learns it'll be replaced — and a jealous cat, Luna, hides the evidence.</div><div class="card" style="font-family:var(--mono);font-size:.85rem;color:var(--slate)">${esc(created.artifacts.brief.logline)}</div>`));
-
-    const gen=await call('POST',`/api/episodes/${id}/generate`); const a=gen.artifacts;
-    setStage('script');
-    await reveal(scene(mk('cue 2','Actor Contracts','Scriptwriting')+`<div class="narr">Scripty turns the brief into <em>identity contracts</em> — who each actor is, and which markers must never drift.</div><div class="grid">${(a.actor_contracts.actors||[]).map(x=>`<div class="cast"><div class="role">${esc(x.role||'actor')}</div><div class="nm">${esc(x.display_name)}</div><div class="tags">${(x.fixed_markers||[]).slice(0,3).map(m=>`<span class="tag">${esc(m)}</span>`).join('')}${(x.forbidden_drift||[]).slice(0,1).map(m=>`<span class="tag no">✗ ${esc(m)}</span>`).join('')}</div></div>`).join('')}</div>`));
-
-    setStage('board');
-    await reveal(scene(mk('cue 3','Storyboard &amp; risk','Storyboarding')+`<div class="narr">Each shot is scored for identity risk before a frame exists. <em>Shot 2 is high risk</em> — Luna's tail hides the prop and her ribbon can vanish.</div><div class="grid">${(a.shot_risk_ledger.risks||[]).map(s=>`<div class="shot ${s.risk_level==='high'?'high':''}"><div class="sid">${esc(s.shot_id)}</div><span class="badge ${esc(s.risk_level)}">${esc(s.risk_level)}</span></div>`).join('')}</div>`));
-
-    setStage('gen');
-    let tk1=a.take_1;
-    if(tk1&&tk1.status==='pending'){   // live: Wan renders async — poll to completion
-      const r1=scene(`<div class="narr" style="text-align:center">🎬 Wan is rendering Take 1 live — <span id="p1">~2–4 min</span></div>`);
-      await reveal(r1);
-      tk1=await ensureTake(id,1,i=>{const e=$('#p1');if(e)e.textContent=((i+1)*8)+'s…';});
-      r1.remove();
-    }
-    const s1=srcOf(tk1,'take1_S02.mp4');
-    await reveal(scene(mk('cue 4','Take 1 · rolling','Video Generation')+`<div class="narr">Wan generates the shot. Watch closely — something's already wrong.</div><div class="monitor">${s1?`<video controls preload="metadata" src="${esc(s1)}"></video>`:`<div class="stub">🐈‍⬛</div>`}<div class="lbl"><span>SHOT 2 · TAKE 1</span><span class="rec" style="color:var(--red)">● REC</span></div></div>`));
-
-    const rev=await call('POST',`/api/episodes/${id}/review`); const v=rev.artifacts.continuity_verdict;
+    await reveal(scene(cue1(await d.brief())));
+    const a=await d.generate(); setStage('script'); await reveal(scene(cue2(a)));
+    setStage('board'); await reveal(scene(cue3(a)));
+    setStage('gen'); const tk1=await d.take(1); await reveal(scene(cue4(tk1)));
+    const v=await d.review();
     await reveal(scene(`<div class="clapper"></div><div class="clap">CUT.</div>`,'cut-scene'));
-    await reveal(scene(mk('cue 5','Continuity Court','Review')+`<div class="narr">The take isn't trusted — it's <em>judged</em>. Qwen's vision model inspects the frame against the contracts.</div><div class="card ruling"><div class="verdict">VERDICT: ${esc((v.verdict||'').toUpperCase())}</div>${(v.violations||[]).map(x=>`<div class="viol"><span class="x">✗</span><span>${esc(x.detail||x.type||'continuity break')}</span></div>`).join('')}<div class="toggle" data-pre>▸ view the slate (raw JSON)</div><pre>${esc(JSON.stringify(v,null,2))}</pre></div>`));
-
-    setStage('edit'); const rs=await call('POST',`/api/episodes/${id}/reshoot`);
-    await reveal(scene(mk('cue 6','Reshoot Spell','Editing')+`<div class="narr">A <em>delta-only</em> repair order — reshoot the broken shot, and only that shot.</div><div class="note">${esc(rs.artifacts.reshoot_spell)}</div>`));
-    let tk2=rs.artifacts.take_2;
-    if(tk2&&tk2.status==='pending'){   // live: poll the Take 2 render
-      const r2=scene(`<div class="narr" style="text-align:center">🎬 Reshooting Take 2 live — <span id="p2">~2–4 min</span></div>`);
-      await reveal(r2);
-      tk2=await ensureTake(id,2,i=>{const e=$('#p2');if(e)e.textContent=((i+1)*8)+'s…';});
-      r2.remove();
-    }
-    const s1b=srcOf(tk1,'take1_S02.mp4'), s2=srcOf(tk2,'take2_S02.mp4');
-    await reveal(scene(mk('cue 7','Take Two — the reveal','Editing')+`<div class="narr">Shots 1, 3 and 4 are untouched. Only Shot 2 gets a second take.</div><div class="ba"><div class="monitor">${s1b?`<video controls preload="metadata" src="${esc(s1b)}"></video>`:`<div class="stub">🐈‍⬛</div>`}<div class="lbl"><span>BEFORE</span><span class="rec">missing ribbon</span></div></div><div class="monitor">${s2?`<video controls preload="metadata" src="${esc(s2)}"></video>`:`<div class="stub">🐈‍⬛🎀</div>`}<div class="lbl"><span>TAKE TWO</span><span class="ok">restored</span></div></div></div>`));
-
-    setStage('mem'); const mem=await call('POST',`/api/episodes/${id}/memory`); const gt=mem.artifacts.anchor_gate, m=mem.artifacts.red_thread_memory; const ok=gt.anchor_status==='approved';
-    await reveal(scene(mk('cue 8','Anchor Gate — the circle take','Memory')+`<div class="narr">Only an approved take gets <em>circled</em> and becomes memory. The gate is strict.</div><div class="card gate"><div class="scores"><div class="dial ${gt.identity_score<85?'bad':''}"><b>${gt.identity_score}</b><span>identity</span></div><div class="dial ${gt.style_score<85?'bad':''}"><b>${gt.style_score}</b><span>style</span></div><div class="dial ${gt.prop_score<85?'bad':''}"><b>${gt.prop_score}</b><span>prop</span></div></div><div class="stamp ${ok?'ok':'no'}"><span class="ring"></span>${ok?'CIRCLE TAKE':'QUARANTINE'}<span class="mk">${ok?'approved ✓':'try again'}</span></div></div>`));
-    await reveal(scene(mk('cue 9','Red-Thread Memory','Memory')+`<div class="narr">Only approved anchors become memory — pinned and threaded for the next episode.</div><div class="board"><div class="pins"><div class="pin" style="--r:-2deg"><div class="k">new fact</div>${esc(m.story_memory.new_fact)}</div><div class="pin" style="--r:1.5deg"><div class="k">relationship</div>${esc(m.story_memory.relationship_change)}</div><div class="pin" style="--r:-1deg"><div class="k">open thread</div>${esc(m.story_memory.open_thread)}</div></div>${m.auto_greenlight?`<div class="greenlight"><div><div class="k" style="font-family:var(--mono);font-size:.62rem;color:var(--muted);text-transform:uppercase">auto greenlight · next cold open</div><div class="ep">${esc(m.auto_greenlight.episode_2_title)}</div><div style="color:var(--muted);font-size:.9rem">${esc(m.auto_greenlight.cold_open)}</div></div><div style="font-size:2rem">🎬</div></div>`:''}</div>`));
+    await reveal(scene(cue5(v)));
+    setStage('edit'); await reveal(scene(cue6(await d.reshoot())));
+    const tk2=await d.take(2); await reveal(scene(cue7(tk1,tk2)));
+    setStage('mem'); const mem=await d.memory();
+    await reveal(scene(cue8(mem.gate))); await reveal(scene(cue9(mem.memory)));
     pipe.querySelectorAll('span').forEach(s=>s.classList.add('done'));
-    await reveal(scene(`<div class="closing"><div class="big">Only approved takes become memory.</div></div>`));
-  }catch(e){scene(`<div class="err">⚠ ${esc(e.message)}<br>Is the API running at ${esc(api.value)} ? Use ⚙ to set the base.</div>`).classList.add('in');}
-  finally{busy=false;$('#roll').disabled=false;}
+    const cta=d.live?'':`<button class="btn primary" id="endrun" style="margin-top:1.4rem">▶ Now run your own live episode →</button>`;
+    const end=scene(`<div class="closing"><div class="big">Only approved takes become memory.</div>${cta}</div>`);
+    await reveal(end);
+    const er=$('#endrun'); if(er)er.onclick=runLive;
+  }catch(e){scene(`<div class="err">⚠ ${esc(e.message)}<br>Try again, or set the API base with ⚙.</div>`).classList.add('in');}
+  finally{busy=false;$('#roll').disabled=$('#runlive').disabled=false;}
 }
-$('#roll').onclick=run;
+
+async function playDemo(){try{const rep=await call('GET','/api/demo');renderStory(demoDriver(rep.artifacts));}catch(e){scene(`<div class="err">⚠ demo unavailable: ${esc(e.message)}</div>`).classList.add('in');}}
+function runLive(){if(!token){openAuth();return;}renderStory(liveDriver());}
+
+$('#roll').onclick=playDemo;
+$('#runlive').onclick=runLive;
 reel.addEventListener('click',e=>{if(e.target.matches('[data-pre]')){const p=e.target.nextElementSibling;p.classList.toggle('show');e.target.textContent=(p.classList.contains('show')?'▾ hide slate':'▸ view the slate (raw JSON)');}});
 </script>
 </body>
