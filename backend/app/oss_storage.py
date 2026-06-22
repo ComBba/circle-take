@@ -82,3 +82,8 @@ def put_file(key: str, path: str) -> str:
     cfg = load_config()
     _bucket(cfg).put_object_from_file(key, path)
     return object_url(cfg.bucket, cfg.region, key)
+
+
+def signed_url(key: str, expires: int = 86400) -> str:
+    """Presigned GET URL for a private object (no public-read needed). Local HMAC, no network."""
+    return _bucket(load_config()).sign_url("GET", key, expires, slash_safe=True)

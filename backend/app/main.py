@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import auth, config, pipeline
+from . import auth, config, oss_storage, pipeline
 from .deps import get_store
 from .schemas import (
     EpisodeBrief,
@@ -81,11 +81,18 @@ def _take_marker(n: int):
 
 
 def _public_artifacts(artifacts: dict) -> dict:
-    """Drop heavy internal fields (the base64 Court frame) from API responses."""
+    """Shape artifacts for API responses: drop the heavy base64 Court frame, and
+    re-sign each live take's private OSS object into a fresh presigned video_url."""
     out = {}
     for key, val in artifacts.items():
-        if isinstance(val, dict) and "frame_data_url" in val:
-            val = {k: v for k, v in val.items() if k != "frame_data_url"}
+        if isinstance(val, dict):
+            if "frame_data_url" in val:
+                val = {k: v for k, v in val.items() if k != "frame_data_url"}
+            if val.get("oss_key"):
+                try:
+                    val = {**val, "video_url": oss_storage.signed_url(val["oss_key"])}
+                except Exception:
+                    pass  # keep the stored fallback (wan_url) if OSS is unavailable
         out[key] = val
     return out
 
