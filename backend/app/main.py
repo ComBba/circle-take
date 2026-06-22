@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import auth, config
+from . import auth, config, pipeline
 from .deps import get_store
 from .schemas import (
     EpisodeBrief,
@@ -176,28 +176,50 @@ def get_episode(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
 def generate(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
     """Contracts + storyboard + risk ledger + Take 1.
 
-    Fixture mode loads golden-path artifacts; live mode (Phase 2-3) will call
-    Qwen for contracts/storyboard and Wan for Take 1.
+    Live mode (APP_ENV=live + key) calls real Qwen for the text contracts and
+    kicks off a real Wan Take 1 render (async — poll /take/1/poll). Fixture mode
+    loads golden-path artifacts so the regression suite stays deterministic.
     """
     _require_owned(store, eid, user)
-    store.put_artifact(eid, "actor_contracts", _resolve_json("actor_contracts.json"))
-    store.put_artifact(eid, "style_contract", _resolve_json("style_contract.json"))
-    store.put_artifact(eid, "story_contract", _resolve_json("story_contract.json"))
-    store.put_artifact(eid, "storyboard_slate", _resolve_json("storyboard_slate.json"))
-    store.put_artifact(eid, "shot_risk_ledger", _resolve_json("shot_risk_ledger.json"))
-    store.put_artifact(eid, "take_1", _take_marker(1))
+    if config.is_live():
+        pipeline.generate_text(store, eid, store.get_artifact(eid, "brief") or {})
+        pipeline.start_take(store, eid, 1, pipeline.FAIL_PROMPT)
+    else:
+        store.put_artifact(eid, "actor_contracts", _resolve_json("actor_contracts.json"))
+        store.put_artifact(eid, "style_contract", _resolve_json("style_contract.json"))
+        store.put_artifact(eid, "story_contract", _resolve_json("story_contract.json"))
+        store.put_artifact(eid, "storyboard_slate", _resolve_json("storyboard_slate.json"))
+        store.put_artifact(eid, "shot_risk_ledger", _resolve_json("shot_risk_ledger.json"))
+        store.put_artifact(eid, "take_1", _take_marker(1))
     _advance_to(store, eid, EpisodeStatus.TAKE_1_READY)
+    return _state(store, eid)
+
+
+@app.post("/api/episodes/{eid}/take/{n}/poll", response_model=EpisodeState)
+def poll_take(eid: str, n: int, user: CurrentUser, store: Store = Depends(get_store)):
+    """Advance a pending Wan take (live mode). Safe to call repeatedly."""
+    _require_owned(store, eid, user)
+    if n not in (1, 2):
+        raise HTTPException(status_code=404, detail="unknown take")
+    if config.is_live():
+        pipeline.poll_take(store, eid, n)
     return _state(store, eid)
 
 
 @app.post("/api/episodes/{eid}/review", response_model=EpisodeState)
 def review(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
-    """Continuity Court verdict. Live mode (Phase 2.3) sends a real frame to Qwen vision."""
+    """Continuity Court verdict. Live mode sends Take 1's real frame to Qwen vision."""
     _require_owned(store, eid, user)
-    store.put_artifact(
-        eid, "continuity_verdict",
-        _resolve_json("continuity_verdict_before.json", "continuity_verdict.json"),
-    )
+    if config.is_live():
+        try:
+            pipeline.review(store, eid)
+        except pipeline.PipelineNotReady as e:
+            raise HTTPException(status_code=409, detail=str(e)) from e
+    else:
+        store.put_artifact(
+            eid, "continuity_verdict",
+            _resolve_json("continuity_verdict_before.json", "continuity_verdict.json"),
+        )
     _advance_to(store, eid, EpisodeStatus.CUT_REQUIRED)
     return _state(store, eid)
 
@@ -205,9 +227,12 @@ def review(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
 @app.post("/api/episodes/{eid}/reshoot", response_model=EpisodeState)
 def reshoot(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
     _require_owned(store, eid, user)
-    store.put_artifact(eid, "reshoot_spell", _resolve_text("reshoot_spell.txt"))
-    store.put_artifact(eid, "continuity_verdict_after", _resolve_json("continuity_verdict_after.json"))
-    store.put_artifact(eid, "take_2", _take_marker(2))
+    if config.is_live():
+        pipeline.reshoot(store, eid)
+    else:
+        store.put_artifact(eid, "reshoot_spell", _resolve_text("reshoot_spell.txt"))
+        store.put_artifact(eid, "continuity_verdict_after", _resolve_json("continuity_verdict_after.json"))
+        store.put_artifact(eid, "take_2", _take_marker(2))
     _advance_to(store, eid, EpisodeStatus.TAKE_2_READY)
     return _state(store, eid)
 
@@ -215,8 +240,14 @@ def reshoot(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
 @app.post("/api/episodes/{eid}/memory", response_model=EpisodeState)
 def memory(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
     _require_owned(store, eid, user)
-    store.put_artifact(eid, "anchor_gate", _resolve_json("anchor_gate.json"))
-    store.put_artifact(eid, "red_thread_memory", _resolve_json("red_thread_memory.json"))
+    if config.is_live():
+        try:
+            pipeline.memory_stage(store, eid)
+        except pipeline.PipelineNotReady as e:
+            raise HTTPException(status_code=409, detail=str(e)) from e
+    else:
+        store.put_artifact(eid, "anchor_gate", _resolve_json("anchor_gate.json"))
+        store.put_artifact(eid, "red_thread_memory", _resolve_json("red_thread_memory.json"))
     _advance_to(store, eid, EpisodeStatus.AUTO_GREENLIT)
     return _state(store, eid)
 
