@@ -70,11 +70,13 @@ def test_poll_take_succeeds_finalizes(monkeypatch):
         lambda tid: {"output": {"task_status": "SUCCEEDED", "video_url": "https://wan/v.mp4"}},
     )
     monkeypatch.setattr(pipeline.httpx, "get", lambda url, timeout=0: type("R", (), {"content": b"vid"})())
-    monkeypatch.setattr(pipeline, "_oss_put", lambda *a, **k: "https://oss/take1.mp4")
+    monkeypatch.setattr(pipeline, "_oss_put", lambda *a, **k: "ok")  # upload succeeded
+    monkeypatch.setattr(pipeline.oss_storage, "signed_url", lambda key, **k: "https://signed/" + key)
     monkeypatch.setattr(pipeline, "_extract_frame_data_url", lambda data: "data:image/png;base64,AAA")
     out = pipeline.poll_take(store, eid, 1)
     assert out["status"] == "succeeded"
-    assert out["video_url"] == "https://oss/take1.mp4"  # OSS preferred (persistent)
+    assert out["oss_key"] == f"live/{eid}/take1_S02.mp4"
+    assert out["video_url"] == f"https://signed/live/{eid}/take1_S02.mp4"  # presigned, not public
     assert out["wan_url"] == "https://wan/v.mp4"
     assert out["frame_data_url"] == "data:image/png;base64,AAA"
     assert store.get_artifact(eid, "take_1")["status"] == "succeeded"
@@ -221,4 +223,23 @@ def test_state_response_strips_frame_data_url(monkeypatch):
     t1 = c.get(f"/api/episodes/{eid}").json()["artifacts"]["take_1"]
     assert t1["video_url"] == "https://oss/v.mp4"
     assert "frame_data_url" not in t1  # heavy internal field never shipped
+    app.dependency_overrides.clear()
+
+
+def test_state_response_resigns_oss_key(monkeypatch):
+    from app import oss_storage
+    monkeypatch.setattr(oss_storage, "signed_url", lambda key, **k: "https://signed/" + key)
+    monkeypatch.setattr(pipeline, "generate_text", lambda s, e, b: None)
+    monkeypatch.setattr(pipeline, "start_take", lambda s, e, n, p: None)
+    c = _live_client(monkeypatch)
+    eid = c.post("/api/episodes", json={"title": "X"}).json()["episode_id"]
+    store = app.dependency_overrides[get_store]()
+    store.put_artifact(
+        eid, "take_1",
+        {"status": "succeeded", "oss_key": "live/x/take1.mp4", "video_url": "stale-403-url",
+         "frame_data_url": "data:image/png;base64,AAA"},
+    )
+    t1 = c.get(f"/api/episodes/{eid}").json()["artifacts"]["take_1"]
+    assert t1["video_url"] == "https://signed/live/x/take1.mp4"  # re-signed fresh, not the stale url
+    assert "frame_data_url" not in t1
     app.dependency_overrides.clear()

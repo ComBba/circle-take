@@ -94,13 +94,23 @@ def _finalize_take(eid: str, n: int, marker: dict, wan_url: Optional[str]) -> di
     if not wan_url:
         return {**marker, "status": "failed", "error": "no video_url"}
     data = httpx.get(wan_url, timeout=180).content
-    oss_url = _oss_put(f"live/{eid}/take{n}_S02.mp4", data, "video/mp4")
+    key = f"live/{eid}/take{n}_S02.mp4"
+    oss_key = key if _oss_put(key, data, "video/mp4") else None
+    # The bucket is private (account blocks public ACLs); serve a presigned URL.
+    # main._public_artifacts re-signs oss_key on every read so the link never goes stale.
+    video_url = wan_url  # fallback if OSS is unavailable
+    if oss_key:
+        try:
+            video_url = oss_storage.signed_url(oss_key)
+        except Exception:
+            pass
     return {
         "source": "live",
         "status": "succeeded",
         "shot": "S02",
-        "video_url": oss_url or wan_url,  # OSS is persistent; Wan URL is temporary
+        "oss_key": oss_key,
         "wan_url": wan_url,
+        "video_url": video_url,
         "frame_data_url": _extract_frame_data_url(data),
     }
 
