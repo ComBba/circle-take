@@ -141,6 +141,16 @@
 <body>
 <div class="adv" id="adv"><span>API base</span><input id="api" /><button class="btn ghost" id="advClose" style="padding:.4rem .8rem">close</button></div>
 
+<div id="authbar" style="position:fixed;top:0;left:0;right:0;z-index:9996;display:flex;gap:.4rem;align-items:center;justify-content:center;flex-wrap:wrap;padding:.45rem .8rem;background:#0e0e12ee;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:.72rem">
+  <span style="color:var(--muted);letter-spacing:.1em">SIGN IN TO RUN A LIVE EPISODE</span>
+  <input id="email" type="email" placeholder="email" autocomplete="email" style="background:#16161b;border:1px solid var(--line);color:var(--fg);padding:.35rem .55rem;border-radius:4px;font:inherit;width:170px" />
+  <input id="pw" type="password" placeholder="password (8+)" autocomplete="current-password" style="background:#16161b;border:1px solid var(--line);color:var(--fg);padding:.35rem .55rem;border-radius:4px;font:inherit;width:140px" />
+  <button class="btn" id="signin" style="padding:.35rem .7rem">Sign in</button>
+  <button class="btn ghost" id="register" style="padding:.35rem .7rem">Register</button>
+  <span id="who" style="color:var(--green)"></span>
+  <button class="btn ghost" id="signout" style="padding:.35rem .7rem;display:none">Sign out</button>
+</div>
+
 <header class="hero" id="top">
   <canvas id="three"></canvas>
   <div class="perf l"></div><div class="perf r"></div>
@@ -231,6 +241,32 @@ let busy=false;
 fetch(api.value+'/health').then(r=>r.json()).then(d=>$('#mode').innerHTML='mode · <b>'+d.mode+'</b>').catch(()=>{});
 $('#gear').onclick=()=>$('#adv').classList.toggle('open'); $('#advClose').onclick=()=>$('#adv').classList.remove('open');
 
+// --- auth: email+password -> JWT (stored locally), sent on every API call ---
+let token=localStorage.getItem('ct_token')||'';
+let whoEmail=localStorage.getItem('ct_email')||'';
+function setAuthUI(){
+  const on=!!token;
+  $('#who').textContent=on?('● '+whoEmail):'';
+  $('#signout').style.display=on?'':'none';
+  $('#email').style.display=$('#pw').style.display=$('#signin').style.display=$('#register').style.display=on?'none':'';
+  $('#roll').textContent=on?'▶ Roll a live episode':'▶ Sign in to roll';
+}
+async function doAuth(path){
+  const email=$('#email').value.trim(), password=$('#pw').value;
+  if(!email||password.length<8){alert('Enter an email and an 8+ char password.');return;}
+  try{
+    const r=await fetch(api.value+'/api/auth/'+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,password})});
+    if(!r.ok){alert(path+' failed ('+r.status+(r.status===409?' — email already registered, try Sign in':'')+(r.status===401?' — wrong email or password':'')+')');return;}
+    const d=await r.json(); token=d.access_token; whoEmail=email;
+    localStorage.setItem('ct_token',token); localStorage.setItem('ct_email',email);
+    $('#pw').value=''; setAuthUI();
+  }catch(e){alert('Network error: '+e.message);}
+}
+$('#signin').onclick=()=>doAuth('login');
+$('#register').onclick=()=>doAuth('register');
+$('#signout').onclick=()=>{token='';whoEmail='';localStorage.removeItem('ct_token');localStorage.removeItem('ct_email');setAuthUI();};
+setAuthUI();
+
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in')}),{threshold:.25});
 const reel=$('#reel'), pipe=$('#pipeline');
 const STAGES=['script','board','gen','edit','mem'];
@@ -239,13 +275,29 @@ function setStage(k){pipe.classList.add('on');const i=STAGES.indexOf(k);
 function scene(html,cls=''){const d=document.createElement('section');d.className='scene '+cls;d.innerHTML=html;reel.appendChild(d);io.observe(d);return d;}
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 async function reveal(el){el.classList.add('in');el.scrollIntoView({behavior:'smooth',block:'center'});await wait(950);}
-async function call(m,p,b){const r=await fetch(api.value+p,{method:m,headers:{'content-type':'application/json'},body:b?JSON.stringify(b):undefined});if(!r.ok)throw new Error(p+' → '+r.status);return r.json();}
+async function call(m,p,b){const h={'content-type':'application/json'};if(token)h['Authorization']='Bearer '+token;const r=await fetch(api.value+p,{method:m,headers:h,body:b?JSON.stringify(b):undefined});if(!r.ok)throw new Error(p+' → '+r.status);return r.json();}
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const vid=n=>`${api.value}/api/media/${n}`;
+// Per-episode source: live OSS url > bundled demo media > stub.
+const srcOf=(tk,name)=>tk&&tk.video_url?tk.video_url:(tk&&tk.source==='live'?vid(name):null);
+// Live mode: Wan renders are async — poll until the take finishes (cap ~6 min).
+async function ensureTake(id,n,onTick){
+  for(let i=0;i<45;i++){
+    const st=await call('POST',`/api/episodes/${id}/take/${n}/poll`);
+    const tk=st.artifacts['take_'+n];
+    if(!tk||tk.status!=='pending')return tk;          // fixture marker or finished
+    if(tk.status==='failed')throw new Error('Take '+n+' generation failed');
+    if(onTick)onTick(i);
+    await wait(8000);
+  }
+  throw new Error('Take '+n+' timed out (still rendering)');
+}
 const mk=(step,title,stage)=>`<div class="marker"><span class="step">${step}</span> ${title}${stage?`<span class="stage">${stage}</span>`:''}</div>`;
 
 async function run(){
-  if(busy)return; busy=true; $('#roll').disabled=true; reel.innerHTML=''; pipe.classList.add('on');
+  if(busy)return;
+  if(!token){$('#email').focus();$('#email').style.outline='2px solid var(--red)';setTimeout(()=>$('#email').style.outline='',1500);return;}
+  busy=true; $('#roll').disabled=true; reel.innerHTML=''; pipe.classList.add('on');
   try{
     const created=await call('POST','/api/episodes',{title:'The Last Alarm'}); const id=created.episode_id;
     await reveal(scene(mk('cue 1','The pitch','Brief')+`<div class="narr">A 15-second clay micro-drama: <em>The Last Alarm</em>. A broken alarm clock learns it'll be replaced — and a jealous cat, Luna, hides the evidence.</div><div class="card" style="font-family:var(--mono);font-size:.85rem;color:var(--slate)">${esc(created.artifacts.brief.logline)}</div>`));
@@ -257,8 +309,16 @@ async function run(){
     setStage('board');
     await reveal(scene(mk('cue 3','Storyboard &amp; risk','Storyboarding')+`<div class="narr">Each shot is scored for identity risk before a frame exists. <em>Shot 2 is high risk</em> — Luna's tail hides the prop and her ribbon can vanish.</div><div class="grid">${(a.shot_risk_ledger.risks||[]).map(s=>`<div class="shot ${s.risk_level==='high'?'high':''}"><div class="sid">${esc(s.shot_id)}</div><span class="badge ${esc(s.risk_level)}">${esc(s.risk_level)}</span></div>`).join('')}</div>`));
 
-    setStage('gen'); const t1=a.take_1&&a.take_1.source==='live';
-    await reveal(scene(mk('cue 4','Take 1 · rolling','Video Generation')+`<div class="narr">Wan generates the shot. Watch closely — something's already wrong.</div><div class="monitor">${t1?`<video controls preload="metadata" src="${vid('take1_S02.mp4')}"></video>`:`<div class="stub">🐈‍⬛</div>`}<div class="lbl"><span>SHOT 2 · TAKE 1</span><span class="rec" style="color:var(--red)">● REC</span></div></div>`));
+    setStage('gen');
+    let tk1=a.take_1;
+    if(tk1&&tk1.status==='pending'){   // live: Wan renders async — poll to completion
+      const r1=scene(`<div class="narr" style="text-align:center">🎬 Wan is rendering Take 1 live — <span id="p1">~2–4 min</span></div>`);
+      await reveal(r1);
+      tk1=await ensureTake(id,1,i=>{const e=$('#p1');if(e)e.textContent=((i+1)*8)+'s…';});
+      r1.remove();
+    }
+    const s1=srcOf(tk1,'take1_S02.mp4');
+    await reveal(scene(mk('cue 4','Take 1 · rolling','Video Generation')+`<div class="narr">Wan generates the shot. Watch closely — something's already wrong.</div><div class="monitor">${s1?`<video controls preload="metadata" src="${esc(s1)}"></video>`:`<div class="stub">🐈‍⬛</div>`}<div class="lbl"><span>SHOT 2 · TAKE 1</span><span class="rec" style="color:var(--red)">● REC</span></div></div>`));
 
     const rev=await call('POST',`/api/episodes/${id}/review`); const v=rev.artifacts.continuity_verdict;
     await reveal(scene(`<div class="clapper"></div><div class="clap">CUT.</div>`,'cut-scene'));
@@ -266,8 +326,15 @@ async function run(){
 
     setStage('edit'); const rs=await call('POST',`/api/episodes/${id}/reshoot`);
     await reveal(scene(mk('cue 6','Reshoot Spell','Editing')+`<div class="narr">A <em>delta-only</em> repair order — reshoot the broken shot, and only that shot.</div><div class="note">${esc(rs.artifacts.reshoot_spell)}</div>`));
-    const t2=rs.artifacts.take_2&&rs.artifacts.take_2.source==='live';
-    await reveal(scene(mk('cue 7','Take Two — the reveal','Editing')+`<div class="narr">Shots 1, 3 and 4 are untouched. Only Shot 2 gets a second take.</div><div class="ba"><div class="monitor">${t2?`<video controls preload="metadata" src="${vid('take1_S02.mp4')}"></video>`:`<div class="stub">🐈‍⬛</div>`}<div class="lbl"><span>BEFORE</span><span class="rec">missing ribbon</span></div></div><div class="monitor">${t2?`<video controls preload="metadata" src="${vid('take2_S02.mp4')}"></video>`:`<div class="stub">🐈‍⬛🎀</div>`}<div class="lbl"><span>TAKE TWO</span><span class="ok">restored</span></div></div></div>`));
+    let tk2=rs.artifacts.take_2;
+    if(tk2&&tk2.status==='pending'){   // live: poll the Take 2 render
+      const r2=scene(`<div class="narr" style="text-align:center">🎬 Reshooting Take 2 live — <span id="p2">~2–4 min</span></div>`);
+      await reveal(r2);
+      tk2=await ensureTake(id,2,i=>{const e=$('#p2');if(e)e.textContent=((i+1)*8)+'s…';});
+      r2.remove();
+    }
+    const s1b=srcOf(tk1,'take1_S02.mp4'), s2=srcOf(tk2,'take2_S02.mp4');
+    await reveal(scene(mk('cue 7','Take Two — the reveal','Editing')+`<div class="narr">Shots 1, 3 and 4 are untouched. Only Shot 2 gets a second take.</div><div class="ba"><div class="monitor">${s1b?`<video controls preload="metadata" src="${esc(s1b)}"></video>`:`<div class="stub">🐈‍⬛</div>`}<div class="lbl"><span>BEFORE</span><span class="rec">missing ribbon</span></div></div><div class="monitor">${s2?`<video controls preload="metadata" src="${esc(s2)}"></video>`:`<div class="stub">🐈‍⬛🎀</div>`}<div class="lbl"><span>TAKE TWO</span><span class="ok">restored</span></div></div></div>`));
 
     setStage('mem'); const mem=await call('POST',`/api/episodes/${id}/memory`); const gt=mem.artifacts.anchor_gate, m=mem.artifacts.red_thread_memory; const ok=gt.anchor_status==='approved';
     await reveal(scene(mk('cue 8','Anchor Gate — the circle take','Memory')+`<div class="narr">Only an approved take gets <em>circled</em> and becomes memory. The gate is strict.</div><div class="card gate"><div class="scores"><div class="dial ${gt.identity_score<85?'bad':''}"><b>${gt.identity_score}</b><span>identity</span></div><div class="dial ${gt.style_score<85?'bad':''}"><b>${gt.style_score}</b><span>style</span></div><div class="dial ${gt.prop_score<85?'bad':''}"><b>${gt.prop_score}</b><span>prop</span></div></div><div class="stamp ${ok?'ok':'no'}"><span class="ring"></span>${ok?'CIRCLE TAKE':'QUARANTINE'}<span class="mk">${ok?'approved ✓':'try again'}</span></div></div>`));
