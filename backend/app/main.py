@@ -8,31 +8,24 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import auth, config, oss_storage, pipeline
+from . import config, oss_storage, pipeline
 from .deps import get_store
-from .schemas import (
-    EpisodeBrief,
-    EpisodeState,
-    LoginRequest,
-    ProductionReport,
-    RegisterRequest,
-    TokenResponse,
-    UserPublic,
-)
+from .schemas import EpisodeBrief, EpisodeState, ProductionReport
 from .state import ORDER, EpisodeStatus
 from .store import Store
 
 app = FastAPI(title="Circle Take API", version="0.1.0")
 
-# Authenticated-user dependency (401 if no/invalid bearer token).
-CurrentUser = Annotated[dict, Depends(auth.get_current_user)]
+# BYOK: episodes are anonymous (no accounts). Live runs use the caller's own Qwen key,
+# passed per request via the X-Qwen-Key header — never stored or logged.
+QwenKey = Annotated[Optional[str], Header(alias="X-Qwen-Key")]
 
 # Demo CORS — let the static UI (and judges' browsers) call the API from any origin.
 app.add_middleware(
@@ -124,14 +117,6 @@ def _advance_to(store: Store, eid: str, target: EpisodeStatus) -> None:
     store.update_status(eid, target.value)
 
 
-def _require_owned(store: Store, eid: str, user: dict) -> dict:
-    """404 (not 403) if the episode is missing or owned by another user."""
-    ep = store.get_episode(eid)
-    if ep is None or ep.get("user_id") != user["id"]:
-        raise HTTPException(status_code=404, detail="episode not found")
-    return ep
-
-
 @app.get("/")
 def root():
     # Land visitors (and judges hitting the bare URL) directly on the demo UI.
@@ -169,67 +154,42 @@ def demo():
     }
 
 
-# --- Auth ---
-@app.post("/api/auth/register", response_model=TokenResponse)
-def register(req: RegisterRequest, store: Store = Depends(get_store)):
-    uid = store.create_user(req.email, auth.hash_password(req.password))
-    if uid is None:
-        raise HTTPException(status_code=409, detail="email already registered")
-    return TokenResponse(access_token=auth.create_access_token(uid))
+def _live(x_qwen_key: Optional[str]) -> bool:
+    """Stash the caller's BYOK key for this request and report whether to run live."""
+    config.set_request_key(x_qwen_key)
+    return config.is_live_request()
 
 
-@app.post("/api/auth/login", response_model=TokenResponse)
-def login(req: LoginRequest, store: Store = Depends(get_store)):
-    user = store.get_user_by_email(req.email)
-    if user is None or not auth.verify_password(req.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="invalid email or password")
-    return TokenResponse(access_token=auth.create_access_token(user["id"]))
+def _owned(store: Store, eid: str) -> dict:
+    ep = store.get_episode(eid)
+    if ep is None:
+        raise HTTPException(status_code=404, detail="episode not found")
+    return ep
 
 
-@app.get("/api/auth/me", response_model=UserPublic)
-def me(user: CurrentUser):
-    return UserPublic(id=user["id"], email=user["email"])
-
-
-# --- Episodes (per-user) ---
+# --- Episodes (anonymous; a Qwen key gates live generation, BYOK) ---
 @app.post("/api/episodes", response_model=EpisodeState)
-def create_episode(brief: EpisodeBrief, user: CurrentUser, store: Store = Depends(get_store)):
-    eid = store.create_episode(
-        brief.title or "The Last Alarm", EpisodeStatus.DRAFT.value, user_id=user["id"]
-    )
+def create_episode(brief: EpisodeBrief, store: Store = Depends(get_store)):
+    eid = store.create_episode(brief.title or "The Last Alarm", EpisodeStatus.DRAFT.value)
     store.put_artifact(eid, "brief", brief.model_dump())
     return _state(store, eid)
 
 
-@app.get("/api/episodes", response_model=list[EpisodeState])
-def list_episodes(user: CurrentUser, store: Store = Depends(get_store)):
-    return [
-        EpisodeState(
-            episode_id=ep["episode_id"],
-            state=ep["state"],
-            title=ep["title"],
-            artifacts={},
-        )
-        for ep in store.list_episodes(user["id"])
-    ]
-
-
 @app.get("/api/episodes/{eid}", response_model=EpisodeState)
-def get_episode(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
-    _require_owned(store, eid, user)
+def get_episode(eid: str, store: Store = Depends(get_store)):
+    _owned(store, eid)
     return _state(store, eid)
 
 
 @app.post("/api/episodes/{eid}/generate", response_model=EpisodeState)
-def generate(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
-    """Contracts + storyboard + risk ledger + Take 1.
+def generate(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
+    """Contracts + storyboard + risk + Take 1.
 
-    Live mode (APP_ENV=live + key) calls real Qwen for the text contracts and
-    kicks off a real Wan Take 1 render (async — poll /take/1/poll). Fixture mode
-    loads golden-path artifacts so the regression suite stays deterministic.
+    With a Qwen key (X-Qwen-Key) this runs real Qwen + Wan; without one it replays
+    the golden-path fixtures (deterministic, key-free).
     """
-    _require_owned(store, eid, user)
-    if config.is_live():
+    _owned(store, eid)
+    if _live(x_qwen_key):
         pipeline.generate_text(store, eid, store.get_artifact(eid, "brief") or {})
         pipeline.start_take(store, eid, 1, pipeline.FAIL_PROMPT)
     else:
@@ -244,21 +204,21 @@ def generate(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
 
 
 @app.post("/api/episodes/{eid}/take/{n}/poll", response_model=EpisodeState)
-def poll_take(eid: str, n: int, user: CurrentUser, store: Store = Depends(get_store)):
+def poll_take(eid: str, n: int, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
     """Advance a pending Wan take (live mode). Safe to call repeatedly."""
-    _require_owned(store, eid, user)
+    _owned(store, eid)
     if n not in (1, 2):
         raise HTTPException(status_code=404, detail="unknown take")
-    if config.is_live():
+    if _live(x_qwen_key):
         pipeline.poll_take(store, eid, n)
     return _state(store, eid)
 
 
 @app.post("/api/episodes/{eid}/review", response_model=EpisodeState)
-def review(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
+def review(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
     """Continuity Court verdict. Live mode sends Take 1's real frame to Qwen vision."""
-    _require_owned(store, eid, user)
-    if config.is_live():
+    _owned(store, eid)
+    if _live(x_qwen_key):
         try:
             pipeline.review(store, eid)
         except pipeline.PipelineNotReady as e:
@@ -273,9 +233,9 @@ def review(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
 
 
 @app.post("/api/episodes/{eid}/reshoot", response_model=EpisodeState)
-def reshoot(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
-    _require_owned(store, eid, user)
-    if config.is_live():
+def reshoot(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
+    _owned(store, eid)
+    if _live(x_qwen_key):
         pipeline.reshoot(store, eid)
     else:
         store.put_artifact(eid, "reshoot_spell", _resolve_text("reshoot_spell.txt"))
@@ -286,9 +246,9 @@ def reshoot(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
 
 
 @app.post("/api/episodes/{eid}/memory", response_model=EpisodeState)
-def memory(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
-    _require_owned(store, eid, user)
-    if config.is_live():
+def memory(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
+    _owned(store, eid)
+    if _live(x_qwen_key):
         try:
             pipeline.memory_stage(store, eid)
         except pipeline.PipelineNotReady as e:
@@ -301,8 +261,8 @@ def memory(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
 
 
 @app.get("/api/episodes/{eid}/report", response_model=ProductionReport)
-def report(eid: str, user: CurrentUser, store: Store = Depends(get_store)):
-    ep = _require_owned(store, eid, user)
+def report(eid: str, store: Store = Depends(get_store)):
+    ep = _owned(store, eid)
     return ProductionReport(
         episode_id=ep["episode_id"],
         state=ep["state"],

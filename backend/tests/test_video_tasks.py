@@ -8,7 +8,7 @@ def _client(handler):
 
 
 def test_create_task_returns_id(monkeypatch):
-    monkeypatch.setattr(vt, "QWEN_API_KEY", "k")
+    monkeypatch.setattr(vt.config, "qwen_key", lambda: "k")
 
     def handler(req: httpx.Request) -> httpx.Response:
         assert req.headers.get("X-DashScope-Async") == "enable"
@@ -19,14 +19,14 @@ def test_create_task_returns_id(monkeypatch):
 
 
 def test_create_task_missing_id_raises(monkeypatch):
-    monkeypatch.setattr(vt, "QWEN_API_KEY", "k")
+    monkeypatch.setattr(vt.config, "qwen_key", lambda: "k")
     handler = lambda req: httpx.Response(200, json={"output": {}})
     with pytest.raises(vt.VideoError):
         vt.create_task("x", client=_client(handler))
 
 
 def test_poll_until_succeeded(monkeypatch):
-    monkeypatch.setattr(vt, "QWEN_API_KEY", "k")
+    monkeypatch.setattr(vt.config, "qwen_key", lambda: "k")
     seq = [
         {"output": {"task_status": "PENDING"}},
         {"output": {"task_status": "RUNNING"}},
@@ -58,6 +58,6 @@ def test_poll_timeout_raises(monkeypatch):
 
 
 def test_create_requires_key(monkeypatch):
-    monkeypatch.setattr(vt, "QWEN_API_KEY", "")
+    monkeypatch.setattr(vt.config, "qwen_key", lambda: "")  # BYOK: no key available
     with pytest.raises(vt.VideoError):
         vt.create_task("x")

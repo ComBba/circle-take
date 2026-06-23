@@ -70,14 +70,10 @@ def test_poll_take_succeeds_finalizes(monkeypatch):
         lambda tid: {"output": {"task_status": "SUCCEEDED", "video_url": "https://wan/v.mp4"}},
     )
     monkeypatch.setattr(pipeline.httpx, "get", lambda url, timeout=0: type("R", (), {"content": b"vid"})())
-    monkeypatch.setattr(pipeline, "_oss_put", lambda *a, **k: "ok")  # upload succeeded
-    monkeypatch.setattr(pipeline.oss_storage, "signed_url", lambda key, **k: "https://signed/" + key)
     monkeypatch.setattr(pipeline, "_extract_frame_data_url", lambda data: "data:image/png;base64,AAA")
     out = pipeline.poll_take(store, eid, 1)
     assert out["status"] == "succeeded"
-    assert out["oss_key"] == f"live/{eid}/take1_S02.mp4"
-    assert out["video_url"] == f"https://signed/live/{eid}/take1_S02.mp4"  # presigned, not public
-    assert out["wan_url"] == "https://wan/v.mp4"
+    assert out["video_url"] == "https://wan/v.mp4"  # caller's own DashScope URL; nothing stored
     assert out["frame_data_url"] == "data:image/png;base64,AAA"
     assert store.get_artifact(eid, "take_1")["status"] == "succeeded"
 
@@ -165,13 +161,8 @@ def _live_client(monkeypatch):
     fd, path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     app.dependency_overrides[get_store] = lambda: Store(path)
-    monkeypatch.setattr(config, "is_live", lambda: True)
-    c = TestClient(app)
-    token = c.post("/api/auth/register", json={"email": "live@circle.take", "password": "password123"}).json()[
-        "access_token"
-    ]
-    c.headers.update({"Authorization": f"Bearer {token}"})
-    return c
+    monkeypatch.setattr(config, "is_live_request", lambda: True)  # force the live branch
+    return TestClient(app)  # BYOK: anonymous, no auth header
 
 
 def test_generate_endpoint_live_routes_to_pipeline(monkeypatch):

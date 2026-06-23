@@ -13,7 +13,8 @@ from typing import Callable, Optional
 
 import httpx
 
-QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
+from . import config
+
 VIDEO_BASE_URL = os.getenv("QWEN_VIDEO_BASE_URL", "https://dashscope-intl.aliyuncs.com/api/v1")
 WAN_T2V_MODEL = os.getenv("WAN_T2V_MODEL", "wan2.7-t2v")
 
@@ -25,9 +26,10 @@ class VideoError(RuntimeError):
 
 
 def _auth() -> dict:
-    if not QWEN_API_KEY:
-        raise VideoError("QWEN_API_KEY not configured")
-    return {"Authorization": f"Bearer {QWEN_API_KEY}"}
+    key = config.qwen_key()
+    if not key:
+        raise VideoError("Qwen API key not provided")
+    return {"Authorization": f"Bearer {key}"}
 
 
 def create_task(

@@ -6,6 +6,7 @@ module first in main.py so the env is populated before qwen_client reads it.
 """
 from __future__ import annotations
 
+import contextvars
 import os
 from pathlib import Path
 
@@ -18,6 +19,26 @@ try:
 except Exception:  # pragma: no cover - dotenv optional
     pass
 
+# BYOK: the caller's Qwen key for the current request only. Set per request from the
+# X-Qwen-Key header (config.set_request_key), read by qwen_client/video_tasks at call
+# time, and never stored or logged. ContextVar => isolated per request/thread.
+_request_qwen_key: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "request_qwen_key", default=""
+)
+
+
+def set_request_key(key: str | None) -> None:
+    _request_qwen_key.set((key or "").strip())
+
+
+def qwen_key() -> str:
+    """Key to use now: the per-request BYOK key if present, else the env key (scripts)."""
+    k = _request_qwen_key.get()
+    if k and k != "replace_me":
+        return k
+    env = os.getenv("QWEN_API_KEY", "")
+    return env if env and env != "replace_me" else ""
+
 
 def app_env() -> str:
     return os.getenv("APP_ENV", "fixture")
@@ -29,5 +50,10 @@ def has_qwen_key() -> bool:
 
 
 def is_live() -> bool:
-    """Live mode requires APP_ENV=live and a real key; otherwise use fixtures."""
+    """Live mode requires APP_ENV=live and a real env key; otherwise use fixtures."""
     return app_env() == "live" and has_qwen_key()
+
+
+def is_live_request() -> bool:
+    """Run the real pipeline only in live mode AND when a key is available (BYOK or env)."""
+    return app_env() == "live" and bool(qwen_key())

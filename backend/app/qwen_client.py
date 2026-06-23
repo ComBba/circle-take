@@ -19,8 +19,9 @@ from typing import Any, List, Optional, Type, TypeVar
 import httpx
 from pydantic import BaseModel, ValidationError
 
+from . import config
+
 QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1")
-QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
 QWEN_TEXT_MODEL = os.getenv("QWEN_TEXT_MODEL", "qwen3.7-plus")
 QWEN_VISION_MODEL = os.getenv("QWEN_VISION_MODEL", "qwen3.7-plus")
 
@@ -50,8 +51,9 @@ def chat_raw(
     timeout: float = 120.0,
 ) -> str:
     """One chat/completions call; returns the assistant message content string."""
-    if not QWEN_API_KEY:
-        raise QwenError("QWEN_API_KEY not configured")
+    key = config.qwen_key()
+    if not key:
+        raise QwenError("Qwen API key not provided")
     payload: dict[str, Any] = {"model": model or QWEN_TEXT_MODEL, "messages": messages}
     if response_format:
         payload["response_format"] = response_format
@@ -59,7 +61,7 @@ def chat_raw(
         with httpx.Client(timeout=timeout) as client:
             r = client.post(
                 f"{QWEN_BASE_URL}/chat/completions",
-                headers={"Authorization": f"Bearer {QWEN_API_KEY}"},
+                headers={"Authorization": f"Bearer {key}"},
                 json=payload,
             )
             r.raise_for_status()
