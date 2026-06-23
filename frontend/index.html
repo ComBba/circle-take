@@ -144,21 +144,20 @@
 
 <div id="userchip" style="position:fixed;top:.7rem;right:1rem;z-index:60;font-family:var(--mono);font-size:.7rem;display:flex;gap:.5rem;align-items:center">
   <span id="who" style="color:var(--green)"></span>
-  <button class="btn ghost" id="opensignin" style="padding:.3rem .7rem">Sign in</button>
-  <button class="btn ghost" id="signout" style="padding:.3rem .7rem;display:none">Sign out</button>
+  <button class="btn ghost" id="opensignin" style="padding:.3rem .7rem">Set Qwen key</button>
+  <button class="btn ghost" id="signout" style="padding:.3rem .7rem;display:none">Clear key</button>
 </div>
 
 <div id="authmodal" style="position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:#05050aee;backdrop-filter:blur(6px);padding:1rem">
   <div style="background:linear-gradient(180deg,var(--panel),var(--ink2));border:1px solid var(--line);border-radius:14px;padding:1.7rem 1.5rem;width:min(390px,94vw)">
     <div style="font-family:var(--disp);font-size:1.7rem;color:var(--paper);text-transform:uppercase;letter-spacing:.02em">Run your own episode</div>
-    <p style="color:var(--muted);font-size:.88rem;margin:.4rem 0 1.1rem;line-height:1.5">Watching the loop needs no account. To generate <em style="color:var(--amber);font-style:normal;font-weight:700">your own</em> live episode — real Qwen3.7 + Wan 2.7 — sign in.</p>
-    <input id="email" type="email" placeholder="email" autocomplete="email" style="width:100%;background:#16161b;border:1px solid var(--line);color:var(--fg);padding:.65rem .7rem;border-radius:6px;font-family:var(--mono);margin-bottom:.5rem" />
-    <input id="pw" type="password" placeholder="password (8+ chars)" autocomplete="current-password" style="width:100%;background:#16161b;border:1px solid var(--line);color:var(--fg);padding:.65rem .7rem;border-radius:6px;font-family:var(--mono);margin-bottom:1rem" />
+    <p style="color:var(--muted);font-size:.88rem;margin:.4rem 0 1rem;line-height:1.5">Watching the loop needs nothing. To generate <em style="color:var(--amber);font-style:normal;font-weight:700">your own</em> live episode — real Qwen3.7 + Wan 2.7 — paste your <a href="https://dashscope-intl.console.aliyun.com/" target="_blank">Qwen (DashScope) API key</a>. It runs on your own credits.</p>
+    <input id="qwenkey" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" style="width:100%;background:#16161b;border:1px solid var(--line);color:var(--fg);padding:.65rem .7rem;border-radius:6px;font-family:var(--mono);margin-bottom:.7rem" />
     <div style="display:flex;gap:.5rem">
-      <button class="btn primary" id="signin" style="flex:1;padding:.65rem">Sign in</button>
-      <button class="btn ghost" id="register" style="flex:1;padding:.65rem">Register</button>
+      <button class="btn primary" id="savekey" style="flex:1;padding:.65rem">Save &amp; run</button>
+      <button class="btn ghost" id="authclose" style="flex:1;padding:.65rem">Cancel</button>
     </div>
-    <button class="btn ghost" id="authclose" style="width:100%;margin-top:.6rem;padding:.5rem;font-size:.8rem;border:0">Maybe later</button>
+    <p style="color:var(--muted);font-size:.72rem;margin-top:.9rem;line-height:1.55">🔒 Your key stays <b style="color:var(--fg)">only in this browser</b> (localStorage), is sent with each generation request to power it, and is <b style="color:var(--fg)">never stored or logged</b> on the server. Clear it anytime.</p>
   </div>
 </div>
 
@@ -262,32 +261,25 @@ let busy=false;
 fetch(api.value+'/health').then(r=>r.json()).then(d=>$('#mode').innerHTML='mode · <b>'+d.mode+'</b>').catch(()=>{});
 $('#gear').onclick=()=>$('#adv').classList.toggle('open'); $('#advClose').onclick=()=>$('#adv').classList.remove('open');
 
-// --- auth: optional. Watching the loop is public; sign-in only gates live runs ---
-let token=localStorage.getItem('ct_token')||'';
-let whoEmail=localStorage.getItem('ct_email')||'';
+// --- BYOK: optional Qwen key (browser-only). Watching the loop is public; a key gates live runs ---
+let qwenKey=localStorage.getItem('ct_qwen_key')||'';
 function setAuthUI(){
-  $('#who').textContent=token?('● '+whoEmail):'';
-  $('#signout').style.display=token?'':'none';
-  $('#opensignin').style.display=token?'none':'';
+  $('#who').textContent=qwenKey?'● key set':'';
+  $('#signout').style.display=qwenKey?'':'none';
+  $('#opensignin').style.display=qwenKey?'none':'';
 }
-function openAuth(){$('#authmodal').style.display='flex';$('#email').focus();}
+function openAuth(){$('#authmodal').style.display='flex';$('#qwenkey').value=qwenKey;$('#qwenkey').focus();}
 function closeAuth(){$('#authmodal').style.display='none';}
-async function doAuth(path){
-  const email=$('#email').value.trim(), password=$('#pw').value;
-  if(!email||password.length<8){alert('Enter an email and an 8+ char password.');return;}
-  try{
-    const r=await fetch(api.value+'/api/auth/'+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,password})});
-    if(!r.ok){alert(path+' failed ('+r.status+(r.status===409?' — already registered, try Sign in':'')+(r.status===401?' — wrong email or password':'')+')');return;}
-    token=(await r.json()).access_token; whoEmail=email;
-    localStorage.setItem('ct_token',token); localStorage.setItem('ct_email',email);
-    $('#pw').value=''; setAuthUI(); closeAuth(); runLive();
-  }catch(e){alert('Network error: '+e.message);}
+function saveKey(){
+  const k=$('#qwenkey').value.trim();
+  if(k.length<8){alert('Paste your Qwen (DashScope) API key.');return;}
+  qwenKey=k; localStorage.setItem('ct_qwen_key',k);  // stays in this browser only
+  setAuthUI(); closeAuth(); runLive();
 }
 $('#opensignin').onclick=openAuth;
 $('#authclose').onclick=closeAuth;
-$('#signin').onclick=()=>doAuth('login');
-$('#register').onclick=()=>doAuth('register');
-$('#signout').onclick=()=>{token='';whoEmail='';localStorage.removeItem('ct_token');localStorage.removeItem('ct_email');setAuthUI();};
+$('#savekey').onclick=saveKey;
+$('#signout').onclick=()=>{qwenKey='';localStorage.removeItem('ct_qwen_key');setAuthUI();};
 setAuthUI();
 
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in')}),{threshold:.25});
@@ -298,7 +290,7 @@ function setStage(k){pipe.classList.add('on');const i=STAGES.indexOf(k);
 function scene(html,cls=''){const d=document.createElement('section');d.className='scene '+cls;d.innerHTML=html;reel.appendChild(d);io.observe(d);return d;}
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 async function reveal(el){el.classList.add('in');el.scrollIntoView({behavior:'smooth',block:'center'});await wait(950);}
-async function call(m,p,b){const h={'content-type':'application/json'};if(token)h['Authorization']='Bearer '+token;const r=await fetch(api.value+p,{method:m,headers:h,body:b?JSON.stringify(b):undefined});if(!r.ok)throw new Error(p+' → '+r.status);return r.json();}
+async function call(m,p,b){const h={'content-type':'application/json'};if(qwenKey)h['X-Qwen-Key']=qwenKey;const r=await fetch(api.value+p,{method:m,headers:h,body:b?JSON.stringify(b):undefined});if(!r.ok)throw new Error(p+' → '+r.status);return r.json();}
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 // Per-take video source: the presigned OSS url the API returns (demo or live).
 const srcOf=tk=>tk&&tk.video_url?tk.video_url:null;
@@ -363,7 +355,7 @@ async function renderStory(d){
 }
 
 async function playDemo(){try{const rep=await call('GET','/api/demo');renderStory(demoDriver(rep.artifacts));}catch(e){scene(`<div class="err">⚠ demo unavailable: ${esc(e.message)}</div>`).classList.add('in');}}
-function runLive(){if(!token){openAuth();return;}renderStory(liveDriver());}
+function runLive(){if(!qwenKey){openAuth();return;}renderStory(liveDriver());}
 
 $('#roll').onclick=playDemo;
 $('#runlive').onclick=runLive;
