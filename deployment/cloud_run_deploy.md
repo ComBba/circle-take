@@ -1,53 +1,51 @@
-# Cloud Run deploy (live Qwen+Wan + email auth + Neon Postgres)
+# Cloud Run deploy (BYOK, no storage)
 
-The operational platform runs on Google Cloud Run: per-user email/JWT auth,
-per-request live Qwen3.7 + Wan2.7 generation, and a persistent **Neon Postgres**
-database so accounts and episodes survive Cloud Run's scale-to-zero cold starts.
+Circle Take runs on Google Cloud Run with **no server-side Qwen key and no accounts**:
+- **Watch the loop** is public (golden-path fixtures + presigned demo clips), no key.
+- **Run your own** live episode is **BYOK** — the browser sends the caller's Qwen key
+  via the `X-Qwen-Key` header, used per request and never stored or logged.
+- Episode state is ephemeral SQLite (`/tmp`); a single instance keeps it consistent.
 
-## Prerequisites (one-time, user-provided)
+## What the service needs (env)
 
-1. **Neon Postgres** (free): create a project at <https://neon.tech>, copy the
-   connection string, and put it in `circle-take/.env.local`:
-   ```
-   DATABASE_URL=postgresql://USER:PW@HOST/DB?sslmode=require
-   ```
-   (SQLite still works locally/tests; on Cloud Run it would be ephemeral.)
-2. **JWT secret** in `.env.local` (or the deploy script generates one):
-   ```
-   JWT_SECRET=$(openssl rand -hex 32)
-   ```
-3. `QWEN_API_KEY`, `ALIBABA_CLOUD_*`, and the model IDs already live in `.env.local`.
-4. `gcloud` authenticated (`gcloud auth login`) with a project set.
+Non-secret config + the OSS creds that presign the public demo clips — **not** a Qwen
+key, **not** a JWT secret:
+
+```
+APP_ENV=live
+DATABASE_URL=sqlite:////tmp/circle_take.db
+QWEN_BASE_URL, QWEN_VIDEO_BASE_URL, QWEN_TEXT_MODEL, QWEN_VISION_MODEL, WAN_*_MODEL
+ALIBABA_CLOUD_REGION, ALIBABA_CLOUD_OSS_BUCKET, ALIBABA_CLOUD_ACCESS_KEY_ID, ALIBABA_CLOUD_ACCESS_KEY_SECRET
+```
 
 ## Deploy
 
 ```bash
-bash deployment/deploy_cloud_run.sh
+# Build the env-vars file from .env.local (omits QWEN_API_KEY + JWT):
+# (see the inline builder in this repo's deploy history, or hand-write the keys above)
+gcloud run deploy circle-take \
+  --project <PROJECT> --source . --region us-central1 \
+  --allow-unauthenticated --memory 1Gi --cpu 1 --timeout 600 \
+  --max-instances 1 --clear-cloudsql-instances \
+  --env-vars-file env.yaml --quiet
 ```
 
-The script builds an env-vars file from `.env.local` (forcing `APP_ENV=live`),
-deploys from the `Dockerfile` (which installs **ffmpeg** for live frame
-extraction), and prints the service URL + `/health` status. Secrets are passed as
-Cloud Run service env vars and never committed.
+`--max-instances 1` keeps the ephemeral SQLite state consistent across a multi-step run;
+`--clear-cloudsql-instances` removes any prior database attachment (BYOK stores nothing).
 
 ## Verify (live)
 
 ```bash
 B=https://<service-url>
-# auth + isolation
-curl -s -X POST $B/api/auth/register -H 'content-type: application/json' \
-     -d '{"email":"you@x.com","password":"password123"}'        # -> {access_token}
-curl -s -o /dev/null -w '%{http_code}\n' $B/api/episodes        # -> 401 (no token)
-# full live run (Wan is async: poll between stages)
-TOK=...; H="Authorization: Bearer $TOK"
-EID=$(curl -s -X POST $B/api/episodes -H "$H" -d '{"title":"The Last Alarm"}' | jq -r .episode_id)
-curl -s -X POST $B/api/episodes/$EID/generate -H "$H"           # Qwen text + start Wan Take 1
-curl -s -X POST $B/api/episodes/$EID/take/1/poll -H "$H"        # repeat until take_1.status=succeeded
-curl -s -X POST $B/api/episodes/$EID/review   -H "$H"           # real Qwen-vision verdict
-curl -s -X POST $B/api/episodes/$EID/reshoot  -H "$H"           # spell + start Wan Take 2
-curl -s -X POST $B/api/episodes/$EID/take/2/poll -H "$H"        # until take_2.status=succeeded
-curl -s -X POST $B/api/episodes/$EID/memory   -H "$H"           # Anchor Gate + memory -> AUTO_GREENLIT
+curl -s $B/health                                   # mode: live
+curl -s -o /dev/null -w '%{http_code}\n' $B/api/demo            # 200 (public, no key)
+curl -s -o /dev/null -w '%{http_code}\n' -X POST $B/api/auth/register  # 404 (no accounts)
+# BYOK live run:
+H='X-Qwen-Key: sk-...'
+EID=$(curl -s -X POST $B/api/episodes -d '{"title":"x"}' -H 'content-type: application/json' | jq -r .episode_id)
+curl -s -X POST $B/api/episodes/$EID/generate -H "$H"      # live Qwen + Wan
+curl -s -X POST $B/api/episodes/$EID/take/1/poll -H "$H"   # repeat until take_1.status=succeeded
+# take_1.video_url is the caller's own DashScope URL (nothing stored on our side)
 ```
 
-Cold-start persistence: after the service scales to zero, logging in again still
-returns 200 and `GET /api/episodes` still lists your episodes (data is in Neon).
+Without `X-Qwen-Key`, the same endpoints replay golden-path fixtures (no Qwen calls).
