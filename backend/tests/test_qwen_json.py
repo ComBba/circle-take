@@ -44,6 +44,6 @@ def test_qwen_json_gives_up_after_retries(monkeypatch):
 
 
 def test_chat_raw_requires_key(monkeypatch):
-    monkeypatch.setattr(qwen_client, "QWEN_API_KEY", "")
+    monkeypatch.setattr(qwen_client.config, "qwen_key", lambda: "")  # BYOK: no key available
     with pytest.raises(qwen_client.QwenError):
         qwen_client.chat_raw([{"role": "user", "content": "hi"}])

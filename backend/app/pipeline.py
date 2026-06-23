@@ -29,7 +29,6 @@ from . import (
     anchor_gate,
     continuity_court,
     contracts,
-    oss_storage,
     reshoot_spell,
     storyboard,
     video_tasks,
@@ -93,24 +92,14 @@ def poll_take(store: Store, eid: str, n: int) -> dict:
 def _finalize_take(eid: str, n: int, marker: dict, wan_url: Optional[str]) -> dict:
     if not wan_url:
         return {**marker, "status": "failed", "error": "no video_url"}
+    # BYOK / no-storage: serve the caller's own DashScope signed URL directly and only
+    # download the bytes transiently to grab the Court's frame. Nothing is persisted.
     data = httpx.get(wan_url, timeout=180).content
-    key = f"live/{eid}/take{n}_S02.mp4"
-    oss_key = key if _oss_put(key, data, "video/mp4") else None
-    # The bucket is private (account blocks public ACLs); serve a presigned URL.
-    # main._public_artifacts re-signs oss_key on every read so the link never goes stale.
-    video_url = wan_url  # fallback if OSS is unavailable
-    if oss_key:
-        try:
-            video_url = oss_storage.signed_url(oss_key)
-        except Exception:
-            pass
     return {
         "source": "live",
         "status": "succeeded",
         "shot": "S02",
-        "oss_key": oss_key,
-        "wan_url": wan_url,
-        "video_url": video_url,
+        "video_url": wan_url,
         "frame_data_url": _extract_frame_data_url(data),
     }
 
@@ -129,13 +118,6 @@ def _extract_frame_data_url(video_bytes: bytes) -> Optional[str]:
             return "data:image/png;base64," + base64.b64encode(fp.read_bytes()).decode()
         except (subprocess.CalledProcessError, FileNotFoundError, OSError):
             return None
-
-
-def _oss_put(key: str, data: bytes, content_type: str) -> Optional[str]:
-    try:
-        return oss_storage.put_bytes(key, data, content_type)
-    except Exception:  # never fail a render on an upload hiccup
-        return None
 
 
 def _contracts(store: Store, eid: str) -> tuple[dict, dict]:
