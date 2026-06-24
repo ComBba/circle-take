@@ -50,6 +50,15 @@ class AnchorGateResult(BaseModel):
     anchor_status: str
 
 
+# --- Agentic Scripty: the Qwen-driven repair decision ---
+class RepairDecision(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    chosen_route: str  # which available reshoot route (mode) to use next
+    reasoning: str      # why — surfaced as an artifact judges can read
+    expected_fix: str   # what this route is expected to correct
+    give_up: bool = False  # true when no route is likely to fix it (honest stop)
+
+
 # --- Shot Risk Ledger ---
 class ShotRisk(BaseModel):
     model_config = ConfigDict(extra="ignore")

@@ -32,6 +32,7 @@ from . import (
     contracts,
     reference_pack,
     reshoot_spell,
+    scripty,
     storyboard,
     video_router,
     video_tasks,
@@ -147,6 +148,28 @@ def review(store: Store, eid: str) -> dict:
     return verdict
 
 
+def _choose_rung(store: Store, eid: str, verdict: dict, ladder: list, attempt: int) -> dict:
+    """Pick the reshoot rung. In live mode, Scripty (Qwen) chooses from the ladder and
+    its reasoning is recorded as the `scripty_decisions` artifact; otherwise — or if
+    Scripty errors — fall back to the deterministic ladder (guardrail)."""
+    default = ladder[min(attempt, len(ladder) - 1)]
+    if not config.is_live_request():
+        return default
+    try:
+        prior = store.get_artifact(eid, "anchor_gate")
+        decision = scripty.decide_repair(verdict, [r["mode"] for r in ladder], prior_gate=prior)
+    except Exception:
+        return default  # Scripty unavailable -> deterministic ladder
+    log = store.get_artifact(eid, "scripty_decisions") or {"decisions": []}
+    log["decisions"].append({
+        "attempt": attempt, "chosen_route": decision.chosen_route,
+        "reasoning": decision.reasoning, "expected_fix": decision.expected_fix,
+        "give_up": decision.give_up,
+    })
+    store.put_artifact(eid, "scripty_decisions", log)
+    return next((r for r in ladder if r["mode"] == decision.chosen_route), default)
+
+
 def reshoot(store: Store, eid: str, attempt: int = 0) -> dict:
     """Reference-conditioned reshoot of the failed shot.
 
@@ -161,7 +184,7 @@ def reshoot(store: Store, eid: str, attempt: int = 0) -> dict:
 
     pack = store.get_artifact(eid, "reference_pack") or reference_pack.build_reference_pack(ac)
     ladder = video_router.reshoot_ladder(pack.get("reference_image_url"))
-    rung = ladder[min(attempt, len(ladder) - 1)]
+    rung = _choose_rung(store, eid, verdict, ladder, attempt)
     task_id = video_tasks.submit_video(rung["mode"], FIX_PROMPT, model=rung["model"], **rung["ref"])
 
     marker = {

@@ -185,6 +185,49 @@ def test_gate_decision_approve_escalate_quarantine():
     assert pipeline.gate_decision(g_fail, 2, 3, 85) == "quarantine"  # ladder exhausted
 
 
+def _ref_episode():
+    store = _store()
+    eid = store.create_episode("X", "DRAFT")
+    store.put_artifact(eid, "continuity_verdict", {"shot_id": "S02", "violations": []})
+    store.put_artifact(eid, "actor_contracts", {"actors": [{"display_name": "Luna"}]})
+    store.put_artifact(
+        eid, "reference_pack",
+        {"actor_id": "luna", "fixed_markers": [], "reference_image_url": "https://ref/luna.png"},
+    )
+    return store, eid
+
+
+def test_reshoot_live_honors_scripty_choice(monkeypatch):
+    from app.schemas import RepairDecision
+    store, eid = _ref_episode()
+    monkeypatch.setattr(pipeline.config, "is_live_request", lambda: True)
+    monkeypatch.setattr(
+        pipeline.scripty, "decide_repair",
+        lambda verdict, modes, prior_gate=None: RepairDecision(
+            chosen_route="kf2v", reasoning="lock both endpoints", expected_fix="ribbon"),
+    )
+    seen = {}
+    _capture_submit(monkeypatch, seen)
+    pipeline.reshoot(store, eid, attempt=0)
+    assert seen["mode"] == "kf2v"  # Scripty overrode the default i2v at attempt 0
+    dec = store.get_artifact(eid, "scripty_decisions")["decisions"][0]
+    assert dec["chosen_route"] == "kf2v" and "lock" in dec["reasoning"]
+
+
+def test_reshoot_live_falls_back_when_scripty_errors(monkeypatch):
+    store, eid = _ref_episode()
+    monkeypatch.setattr(pipeline.config, "is_live_request", lambda: True)
+
+    def boom(*a, **k):
+        raise RuntimeError("qwen down")
+
+    monkeypatch.setattr(pipeline.scripty, "decide_repair", boom)
+    seen = {}
+    _capture_submit(monkeypatch, seen)
+    pipeline.reshoot(store, eid, attempt=0)
+    assert seen["mode"] == "i2v"  # deterministic ladder fallback (attempt 0)
+
+
 def test_memory_stage_requires_take2(monkeypatch):
     store = _store()
     eid = store.create_episode("X", "DRAFT")
