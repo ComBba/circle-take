@@ -121,15 +121,68 @@ def test_review_runs_court_on_frame(monkeypatch):
     assert store.get_artifact(eid, "continuity_verdict")["verdict"] == "fail"
 
 
-def test_reshoot_writes_spell_and_starts_take2(monkeypatch):
+def _capture_submit(monkeypatch, seen):
+    def fake_submit(mode, prompt, *, model, **ref):
+        seen.update(mode=mode, model=model, ref=ref)
+        return "task-2"
+
+    monkeypatch.setattr(pipeline.video_tasks, "submit_video", fake_submit)
+
+
+def test_reshoot_no_reference_falls_back_to_t2v(monkeypatch):
     store = _store()
     eid = store.create_episode("X", "DRAFT")
     store.put_artifact(eid, "continuity_verdict", {"shot_id": "S02", "violations": [{"detail": "no ribbon"}]})
     store.put_artifact(eid, "actor_contracts", {"actors": [{"display_name": "Luna", "fixed_markers": ["red ribbon"]}]})
-    monkeypatch.setattr(pipeline.video_tasks, "create_task", lambda *a, **k: "task-2")
+    seen = {}
+    _capture_submit(monkeypatch, seen)
     pipeline.reshoot(store, eid)
     assert "RESHOOT S02 ONLY" in store.get_artifact(eid, "reshoot_spell")
-    assert store.get_artifact(eid, "take_2")["status"] == "pending"
+    t2 = store.get_artifact(eid, "take_2")
+    assert t2["status"] == "pending" and t2["task_id"] == "task-2"
+    assert seen["mode"] == "t2v"  # no locked reference -> plain t2v
+    assert store.get_artifact(eid, "reshoot_route")["mode"] == "t2v"
+
+
+def test_reshoot_reference_conditioned_uses_i2v(monkeypatch):
+    store = _store()
+    eid = store.create_episode("X", "DRAFT")
+    store.put_artifact(eid, "continuity_verdict", {"shot_id": "S02", "violations": []})
+    store.put_artifact(eid, "actor_contracts", {"actors": [{"display_name": "Luna"}]})
+    store.put_artifact(
+        eid, "reference_pack",
+        {"actor_id": "luna", "fixed_markers": ["red ribbon"], "reference_image_url": "https://ref/luna.png"},
+    )
+    seen = {}
+    _capture_submit(monkeypatch, seen)
+    pipeline.reshoot(store, eid, attempt=0)
+    assert seen["mode"] == "i2v"  # reference present -> first-frame identity lock
+    assert seen["ref"]["img_url"] == "https://ref/luna.png"
+    assert store.get_artifact(eid, "take_2")["mode"] == "i2v"
+    assert store.get_artifact(eid, "reshoot_route")["ladder_len"] == 3
+
+
+def test_reshoot_escalates_to_r2v_on_second_attempt(monkeypatch):
+    store = _store()
+    eid = store.create_episode("X", "DRAFT")
+    store.put_artifact(eid, "continuity_verdict", {"shot_id": "S02", "violations": []})
+    store.put_artifact(eid, "actor_contracts", {"actors": [{"display_name": "Luna"}]})
+    store.put_artifact(
+        eid, "reference_pack",
+        {"actor_id": "luna", "fixed_markers": [], "reference_image_url": "https://ref/luna.png"},
+    )
+    seen = {}
+    _capture_submit(monkeypatch, seen)
+    pipeline.reshoot(store, eid, attempt=1)
+    assert seen["mode"] == "r2v" and seen["ref"]["reference_urls"] == ["https://ref/luna.png"]
+
+
+def test_gate_decision_approve_escalate_quarantine():
+    g_pass = {"identity_score": 90, "style_score": 88, "prop_score": 91}
+    g_fail = {"identity_score": 20, "style_score": 80, "prop_score": 95}
+    assert pipeline.gate_decision(g_pass, 0, 3, 85) == "approve"
+    assert pipeline.gate_decision(g_fail, 0, 3, 85) == "escalate"  # rungs remain
+    assert pipeline.gate_decision(g_fail, 2, 3, 85) == "quarantine"  # ladder exhausted
 
 
 def test_memory_stage_requires_take2(monkeypatch):
@@ -151,9 +204,42 @@ def test_memory_stage_runs_gate_and_memory(monkeypatch):
             {"shot_id": shot, "identity_score": 92, "style_score": 90, "prop_score": 95, "anchor_status": "approved"}
         ),
     )
-    pipeline.memory_stage(store, eid)
+    assert pipeline.memory_stage(store, eid) == "approve"
     assert store.get_artifact(eid, "anchor_gate")["anchor_status"] == "approved"
     assert store.get_artifact(eid, "red_thread_memory")["auto_greenlight"]["episode_2_title"] == "The Delivery Box"
+
+
+def _gate_scores(monkeypatch, scores):
+    monkeypatch.setattr(
+        pipeline.anchor_gate, "evaluate",
+        lambda shot, frame, ac, style: _M({"shot_id": shot, **scores, "anchor_status": "x"}),
+    )
+
+
+def _take2_episode():
+    store = _store()
+    eid = store.create_episode("X", "DRAFT")
+    store.put_artifact(eid, "take_2", {"status": "succeeded", "frame_data_url": "data:image/png;base64,BBB"})
+    store.put_artifact(eid, "actor_contracts", {"actors": []})
+    store.put_artifact(eid, "style_contract", {"rules": []})
+    return store, eid
+
+
+def test_memory_stage_escalates_below_threshold_with_rungs_left(monkeypatch):
+    store, eid = _take2_episode()
+    store.put_artifact(eid, "reshoot_route", {"attempt": 0, "ladder_len": 3})
+    _gate_scores(monkeypatch, {"identity_score": 15, "style_score": 90, "prop_score": 92})
+    assert pipeline.memory_stage(store, eid) == "escalate"
+    assert store.get_artifact(eid, "red_thread_memory") is None  # not greenlit
+    assert store.get_artifact(eid, "gate_decision")["decision"] == "escalate"
+
+
+def test_memory_stage_quarantines_when_ladder_exhausted(monkeypatch):
+    store, eid = _take2_episode()
+    store.put_artifact(eid, "reshoot_route", {"attempt": 2, "ladder_len": 3})
+    _gate_scores(monkeypatch, {"identity_score": 15, "style_score": 90, "prop_score": 92})
+    assert pipeline.memory_stage(store, eid) == "quarantine"  # honest refusal stays real
+    assert store.get_artifact(eid, "red_thread_memory") is None
 
 
 # --- endpoint wiring: live mode routes to the pipeline ---

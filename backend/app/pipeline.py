@@ -27,10 +27,13 @@ import httpx
 
 from . import (
     anchor_gate,
+    config,
     continuity_court,
     contracts,
+    reference_pack,
     reshoot_spell,
     storyboard,
+    video_router,
     video_tasks,
 )
 from . import memory as memory_mod
@@ -64,6 +67,12 @@ def generate_text(store: Store, eid: str, brief: dict) -> None:
     store.put_artifact(eid, "story_contract", story)
     store.put_artifact(eid, "storyboard_slate", slate)
     store.put_artifact(eid, "shot_risk_ledger", risk)
+    # Lock the identity anchors the reshoot will condition on (markers + reference keyframe).
+    store.put_artifact(
+        eid,
+        "reference_pack",
+        reference_pack.build_reference_pack(actors, config.reference_image_url()),
+    )
 
 
 def start_take(store: Store, eid: str, n: int, prompt: str) -> dict:
@@ -138,16 +147,57 @@ def review(store: Store, eid: str) -> dict:
     return verdict
 
 
-def reshoot(store: Store, eid: str) -> None:
-    """Delta reshoot spell from the verdict, then start the Take 2 render."""
+def reshoot(store: Store, eid: str, attempt: int = 0) -> dict:
+    """Reference-conditioned reshoot of the failed shot.
+
+    Builds the delta reshoot spell, then regenerates Take 2 via the escalating
+    Identity-Lock ladder (i2v/r2v/kf2v conditioned on the Reference Pack keyframe, or
+    plain t2v when no reference is locked). ``attempt`` selects the ladder rung — the
+    Anchor Gate escalates it (see gate_decision). Returns the take_2 marker.
+    """
     verdict = store.get_artifact(eid, "continuity_verdict") or {}
     ac, _ = _contracts(store, eid)
     store.put_artifact(eid, "reshoot_spell", reshoot_spell.build_reshoot_spell(verdict, ac))
-    start_take(store, eid, 2, FIX_PROMPT)
+
+    pack = store.get_artifact(eid, "reference_pack") or reference_pack.build_reference_pack(ac)
+    ladder = video_router.reshoot_ladder(pack.get("reference_image_url"))
+    rung = ladder[min(attempt, len(ladder) - 1)]
+    task_id = video_tasks.submit_video(rung["mode"], FIX_PROMPT, model=rung["model"], **rung["ref"])
+
+    marker = {
+        "source": "live", "status": "pending", "task_id": task_id, "shot": "S02",
+        "mode": rung["mode"], "model": rung["model"],
+    }
+    store.put_artifact(eid, "take_2", marker)
+    store.put_artifact(
+        eid, "reshoot_route",
+        {"attempt": attempt, "mode": rung["mode"], "model": rung["model"], "ladder_len": len(ladder)},
+    )
+    return marker
 
 
-def memory_stage(store: Store, eid: str) -> None:
-    """Real Anchor Gate (vision) on Take 2, then Red-Thread Memory. 409 if not ready."""
+def gate_decision(gate: dict, attempt: int, ladder_len: int, threshold: int) -> str:
+    """Fallback-ladder decision from the Anchor Gate scores.
+
+    approve   -> every score meets the threshold (greenlight + remember).
+    escalate  -> below threshold but ladder rungs remain (reshoot the next route).
+    quarantine-> below threshold and the ladder is exhausted (honest refusal).
+    """
+    worst = min(
+        gate.get("identity_score", 0), gate.get("style_score", 0), gate.get("prop_score", 0)
+    )
+    if worst >= threshold:
+        return "approve"
+    return "escalate" if attempt < ladder_len - 1 else "quarantine"
+
+
+def memory_stage(store: Store, eid: str) -> str:
+    """Anchor Gate (vision) on Take 2, then the fallback-ladder decision. 409 if not ready.
+
+    Only an approved take becomes Red-Thread Memory; a below-threshold take either
+    escalates (more rungs) or is quarantined (honest refusal). Returns the decision so
+    the endpoint can drive the ladder. The honest-refusal capability stays real.
+    """
     take2 = store.get_artifact(eid, "take_2") or {}
     frame = take2.get("frame_data_url")
     if not frame:
@@ -155,4 +205,14 @@ def memory_stage(store: Store, eid: str) -> None:
     ac, style = _contracts(store, eid)
     gate: dict[str, Any] = anchor_gate.evaluate("S02_take_two", frame, ac, style).model_dump()
     store.put_artifact(eid, "anchor_gate", gate)
-    store.put_artifact(eid, "red_thread_memory", memory_mod.build_red_thread_memory(gate))
+
+    route = store.get_artifact(eid, "reshoot_route") or {"attempt": 0, "ladder_len": 1}
+    threshold = config.gate_threshold()
+    decision = gate_decision(gate, route.get("attempt", 0), route.get("ladder_len", 1), threshold)
+    store.put_artifact(
+        eid, "gate_decision",
+        {"decision": decision, "attempt": route.get("attempt", 0), "threshold": threshold},
+    )
+    if decision == "approve":
+        store.put_artifact(eid, "red_thread_memory", memory_mod.build_red_thread_memory(gate))
+    return decision

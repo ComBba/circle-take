@@ -57,3 +57,19 @@ def is_live() -> bool:
 def is_live_request() -> bool:
     """Run the real pipeline only in live mode AND when a key is available (BYOK or env)."""
     return app_env() == "live" and bool(qwen_key())
+
+
+def gate_threshold() -> int:
+    """Anchor Gate pass threshold — every score (identity/style/prop) must meet it.
+    Env-tunable (CIRCLE_TAKE_GATE_THRESHOLD); set empirically in the live spike."""
+    try:
+        return int(os.getenv("CIRCLE_TAKE_GATE_THRESHOLD", "85"))
+    except ValueError:
+        return 85
+
+
+def reference_image_url() -> str:
+    """URL of the locked identity reference keyframe used to condition the reshoot.
+    Empty until a Reference Pack keyframe is generated/hosted (then the reshoot is
+    reference-conditioned instead of a blind t2v)."""
+    return os.getenv("CIRCLE_TAKE_REFERENCE_URL", "").strip()

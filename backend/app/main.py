@@ -250,12 +250,19 @@ def memory(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = No
     _owned(store, eid)
     if _live(x_qwen_key):
         try:
-            pipeline.memory_stage(store, eid)
+            decision = pipeline.memory_stage(store, eid)
         except pipeline.PipelineNotReady as e:
             raise HTTPException(status_code=409, detail=str(e)) from e
+        if decision == "escalate":
+            # Below threshold but ladder rungs remain: reshoot the next route and stay at
+            # TAKE_2_READY so the client re-polls Take 2, then calls /memory again.
+            route = store.get_artifact(eid, "reshoot_route") or {"attempt": 0}
+            pipeline.reshoot(store, eid, attempt=route.get("attempt", 0) + 1)
+            return _state(store, eid)
     else:
         store.put_artifact(eid, "anchor_gate", _resolve_json("anchor_gate.json"))
         store.put_artifact(eid, "red_thread_memory", _resolve_json("red_thread_memory.json"))
+    # approve (greenlit + remembered) or quarantine (honest refusal, no memory) — both terminal.
     _advance_to(store, eid, EpisodeStatus.AUTO_GREENLIT)
     return _state(store, eid)
 
