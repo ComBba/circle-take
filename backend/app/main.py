@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import config, oss_storage, pipeline
+from . import config, oss_storage, pipeline, ratelimit
 from .deps import get_store
 from .schemas import EpisodeBrief, EpisodeState, ProductionReport
 from .state import ORDER, EpisodeStatus
@@ -154,9 +154,27 @@ def demo():
     }
 
 
-def _live(x_qwen_key: Optional[str]) -> bool:
-    """Stash the caller's BYOK key for this request and report whether to run live."""
-    config.set_request_key(x_qwen_key)
+def _effective_live(store: Store, eid: str, x_qwen_key: Optional[str], starting: bool = False) -> bool:
+    """Resolve the key for this request and report whether to run live.
+
+    Priority: the caller's BYOK key (X-Qwen-Key) > a capped server-side judge key (lets
+    judges run live without their own key, owner-funded + rate-limited) > fixtures. The
+    judge key is set only into the per-request ContextVar — never stored or returned.
+    Once an episode is judge-funded (at /generate), its later endpoints stay funded.
+    """
+    if x_qwen_key:
+        config.set_request_key(x_qwen_key)
+        return config.is_live_request()
+    jkey = config.judge_key()
+    if jkey:
+        funded = bool(store.get_artifact(eid, "judge_funded"))
+        if not funded and starting and ratelimit.try_consume(config.judge_daily_cap()):
+            store.put_artifact(eid, "judge_funded", True)
+            funded = True
+        if funded:
+            config.set_request_key(jkey)
+            return config.is_live_request()
+    config.set_request_key(x_qwen_key)  # None -> "" (fixtures unless env is live)
     return config.is_live_request()
 
 
@@ -189,7 +207,7 @@ def generate(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = 
     the golden-path fixtures (deterministic, key-free).
     """
     _owned(store, eid)
-    if _live(x_qwen_key):
+    if _effective_live(store, eid, x_qwen_key, starting=True):
         pipeline.generate_text(store, eid, store.get_artifact(eid, "brief") or {})
         pipeline.start_take(store, eid, 1, pipeline.FAIL_PROMPT)
     else:
@@ -209,7 +227,7 @@ def poll_take(eid: str, n: int, store: Store = Depends(get_store), x_qwen_key: Q
     _owned(store, eid)
     if n not in (1, 2):
         raise HTTPException(status_code=404, detail="unknown take")
-    if _live(x_qwen_key):
+    if _effective_live(store, eid, x_qwen_key):
         pipeline.poll_take(store, eid, n)
     return _state(store, eid)
 
@@ -218,7 +236,7 @@ def poll_take(eid: str, n: int, store: Store = Depends(get_store), x_qwen_key: Q
 def review(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
     """Continuity Court verdict. Live mode sends Take 1's real frame to Qwen vision."""
     _owned(store, eid)
-    if _live(x_qwen_key):
+    if _effective_live(store, eid, x_qwen_key):
         try:
             pipeline.review(store, eid)
         except pipeline.PipelineNotReady as e:
@@ -235,7 +253,7 @@ def review(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = No
 @app.post("/api/episodes/{eid}/reshoot", response_model=EpisodeState)
 def reshoot(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
     _owned(store, eid)
-    if _live(x_qwen_key):
+    if _effective_live(store, eid, x_qwen_key):
         pipeline.reshoot(store, eid)
     else:
         store.put_artifact(eid, "reshoot_spell", _resolve_text("reshoot_spell.txt"))
@@ -248,7 +266,7 @@ def reshoot(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = N
 @app.post("/api/episodes/{eid}/memory", response_model=EpisodeState)
 def memory(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
     _owned(store, eid)
-    if _live(x_qwen_key):
+    if _effective_live(store, eid, x_qwen_key):
         try:
             decision = pipeline.memory_stage(store, eid)
         except pipeline.PipelineNotReady as e:

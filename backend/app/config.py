@@ -73,3 +73,19 @@ def reference_image_url() -> str:
     Empty until a Reference Pack keyframe is generated/hosted (then the reshoot is
     reference-conditioned instead of a blind t2v)."""
     return os.getenv("CIRCLE_TAKE_REFERENCE_URL", "").strip()
+
+
+def judge_key() -> str:
+    """Server-side judge key (the owner's) for the capped judge live path — lets judges
+    see real Qwen+Wan without their own key. Empty disables it. Used only inside the
+    per-request ContextVar; never stored in artifacts, returned, or logged."""
+    k = os.getenv("JUDGE_QWEN_KEY", "").strip()
+    return "" if k in ("", "replace_me") else k
+
+
+def judge_daily_cap() -> int:
+    """Max free judge live runs/day funded by the owner's key (soft cost cap)."""
+    try:
+        return int(os.getenv("JUDGE_DAILY_CAP", "10"))
+    except ValueError:
+        return 10
