@@ -25,7 +25,15 @@ def _client():
 def _stub_pipeline(monkeypatch, calls):
     monkeypatch.setattr(pipeline, "generate_text", lambda s, e, b: calls.append("text"))
     monkeypatch.setattr(
-        pipeline, "start_take", lambda s, e, n, p: s.put_artifact(e, f"take_{n}", {"status": "pending"})
+        pipeline, "start_take",
+        lambda s, e, n, p: (calls.append(f"wan{n}"), s.put_artifact(e, f"take_{n}", {"status": "pending"}))[1],
+    )
+    monkeypatch.setattr(
+        pipeline, "demo_take_live",
+        lambda s, e, n: (
+            calls.append(f"demo{n}"),
+            s.put_artifact(e, f"take_{n}", {"source": "demo-live", "status": "succeeded"}),
+        )[1],
     )
 
 
@@ -46,7 +54,8 @@ def test_correct_passcode_funds_live(monkeypatch):
     c = _client()
     eid = c.post("/api/episodes", json={"title": "Live"}).json()["episode_id"]
     r = c.post(f"/api/episodes/{eid}/generate", headers={"X-Judge-Code": CODE})
-    assert r.status_code == 200 and calls == ["text"]  # ran live
+    assert r.status_code == 200
+    assert "text" in calls and "demo1" in calls and "wan1" not in calls  # live brain, canonical clip, no Wan
     assert r.json()["artifacts"]["judge_funded"] is True
     assert "jk-secret" not in r.text and CODE not in r.text  # neither key nor code leaks
 
@@ -73,7 +82,8 @@ def test_byok_overrides_passcode_and_leaves_cap_untouched(monkeypatch):
     c = _client()
     eid = c.post("/api/episodes", json={"title": "Live"}).json()["episode_id"]
     r = c.post(f"/api/episodes/{eid}/generate", headers={"X-Qwen-Key": "byok"})  # no code needed
-    assert calls == ["text"] and "judge_funded" not in r.json()["artifacts"]
+    assert "text" in calls and "wan1" in calls  # BYOK = full live incl. fresh Wan
+    assert "judge_funded" not in r.json()["artifacts"]
     assert ratelimit.remaining(config.judge_daily_cap()) == config.judge_daily_cap()  # cap untouched
 
 

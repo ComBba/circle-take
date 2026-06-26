@@ -28,7 +28,7 @@ Wan 2.7 generation. Nothing is stored server-side.
 | Live Wan video gen (async per request) | ✅ create→poll; serves the caller's own DashScope URL |
 | **Generation-route selector + reference-conditioned reshoot (Identity-Lock)** | ✅ i2v/r2v/kf2v ladder on a locked keyframe — **live-proven 95/95/95 → approved** (vs blind-t2v 15/100), [evidence](docs/evidence/reshoot-spike-2026-06-24.md) |
 | **Agentic Scripty (Qwen-driven repair decision)** | ✅ picks the reshoot route + records its reasoning |
-| **Capped judge-live path** (judges run live without their own key) | ✅ BYOK > judge-cap > fixture; judge key never stored or returned |
+| **Passcode-gated judge-live (no paid spend by design)** | ✅ judges with the published code (`/ui/?code=…`) run the **live Qwen brain on the canonical clips** — zero Wan/paid spend; BYOK = full live incl. fresh video; key + code never returned |
 | Storage | ✅ none — no accounts, no keys; ephemeral SQLite |
 | Deploy (Cloud Run, single instance) | ✅ `deployment/cloud_run_deploy.md` |
 

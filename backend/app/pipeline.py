@@ -30,6 +30,7 @@ from . import (
     config,
     continuity_court,
     contracts,
+    oss_storage,
     reference_pack,
     reshoot_spell,
     scripty,
@@ -39,6 +40,9 @@ from . import (
 )
 from . import memory as memory_mod
 from .store import Store
+
+# Canonical demo clips (Alibaba OSS) reused by the no-spend judge path.
+_DEMO_TAKE_KEY = {1: "demo/take1_S02.mp4", 2: "demo/take2_S02.mp4"}
 
 # Demo-failure strategy = Option B (transparent constructed): Take 1 omits Luna's
 # ribbon (the Court catches it), Take 2 restores it. Both are real generations.
@@ -130,6 +134,21 @@ def _extract_frame_data_url(video_bytes: bytes) -> Optional[str]:
             return None
 
 
+def demo_take_live(store: Store, eid: str, n: int) -> dict:
+    """No-spend judge path: serve the canonical demo clip as take n AND extract its frame so
+    the LIVE Continuity Court / Anchor Gate (Qwen vision) run on a real frame. Zero Wan video
+    spend — the owner's key funds only free text/vision. Needs OSS creds + ffmpeg."""
+    key = _DEMO_TAKE_KEY[n]
+    url = oss_storage.signed_url(key)
+    data = httpx.get(url, timeout=180).content
+    marker = {
+        "source": "demo-live", "status": "succeeded", "shot": "S02",
+        "oss_key": key, "video_url": url, "frame_data_url": _extract_frame_data_url(data),
+    }
+    store.put_artifact(eid, f"take_{n}", marker)
+    return marker
+
+
 def _contracts(store: Store, eid: str) -> tuple[dict, dict]:
     actors = store.get_artifact(eid, "actor_contracts") or {"actors": []}
     style = store.get_artifact(eid, "style_contract") or {"rules": []}
@@ -170,13 +189,15 @@ def _choose_rung(store: Store, eid: str, verdict: dict, ladder: list, attempt: i
     return next((r for r in ladder if r["mode"] == decision.chosen_route), default)
 
 
-def reshoot(store: Store, eid: str, attempt: int = 0) -> dict:
+def reshoot(store: Store, eid: str, attempt: int = 0, spend_video: bool = True) -> dict:
     """Reference-conditioned reshoot of the failed shot.
 
-    Builds the delta reshoot spell, then regenerates Take 2 via the escalating
-    Identity-Lock ladder (i2v/r2v/kf2v conditioned on the Reference Pack keyframe, or
-    plain t2v when no reference is locked). ``attempt`` selects the ladder rung — the
-    Anchor Gate escalates it (see gate_decision). Returns the take_2 marker.
+    Builds the delta reshoot spell and (via Scripty) chooses the Identity-Lock route, then
+    regenerates Take 2 (i2v/r2v/kf2v conditioned on the Reference Pack keyframe, or plain
+    t2v when no reference is locked). ``attempt`` selects the ladder rung — the Anchor Gate
+    escalates it (see gate_decision). ``spend_video=False`` (the no-spend judge path) records
+    the spell + route decision but skips the Wan call; the caller supplies Take 2 from the
+    canonical demo clip. Returns the take_2 marker (or a deferred stub when not spending).
     """
     verdict = store.get_artifact(eid, "continuity_verdict") or {}
     ac, _ = _contracts(store, eid)
@@ -185,17 +206,19 @@ def reshoot(store: Store, eid: str, attempt: int = 0) -> dict:
     pack = store.get_artifact(eid, "reference_pack") or reference_pack.build_reference_pack(ac)
     ladder = video_router.reshoot_ladder(pack.get("reference_image_url"))
     rung = _choose_rung(store, eid, verdict, ladder, attempt)
-    task_id = video_tasks.submit_video(rung["mode"], FIX_PROMPT, model=rung["model"], **rung["ref"])
+    store.put_artifact(
+        eid, "reshoot_route",
+        {"attempt": attempt, "mode": rung["mode"], "model": rung["model"], "ladder_len": len(ladder)},
+    )
+    if not spend_video:
+        return {"source": "demo-live", "deferred": True, "mode": rung["mode"]}
 
+    task_id = video_tasks.submit_video(rung["mode"], FIX_PROMPT, model=rung["model"], **rung["ref"])
     marker = {
         "source": "live", "status": "pending", "task_id": task_id, "shot": "S02",
         "mode": rung["mode"], "model": rung["model"],
     }
     store.put_artifact(eid, "take_2", marker)
-    store.put_artifact(
-        eid, "reshoot_route",
-        {"attempt": attempt, "mode": rung["mode"], "model": rung["model"], "ladder_len": len(ladder)},
-    )
     return marker
 
 

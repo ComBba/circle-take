@@ -229,7 +229,10 @@ def generate(
     _owned(store, eid)
     if _effective_live(store, eid, x_qwen_key, judge_code=x_judge_code, starting=True):
         pipeline.generate_text(store, eid, store.get_artifact(eid, "brief") or {})
-        pipeline.start_take(store, eid, 1, pipeline.FAIL_PROMPT)
+        if store.get_artifact(eid, "judge_funded"):
+            pipeline.demo_take_live(store, eid, 1)  # no-spend judge path: canonical clip + live frame
+        else:
+            pipeline.start_take(store, eid, 1, pipeline.FAIL_PROMPT)
     else:
         store.put_artifact(eid, "actor_contracts", _resolve_json("actor_contracts.json"))
         store.put_artifact(eid, "style_contract", _resolve_json("style_contract.json"))
@@ -274,7 +277,11 @@ def review(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = No
 def reshoot(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
     _owned(store, eid)
     if _effective_live(store, eid, x_qwen_key):
-        pipeline.reshoot(store, eid)
+        if store.get_artifact(eid, "judge_funded"):
+            pipeline.reshoot(store, eid, spend_video=False)  # Scripty decides; no Wan spend
+            pipeline.demo_take_live(store, eid, 2)
+        else:
+            pipeline.reshoot(store, eid)
     else:
         store.put_artifact(eid, "reshoot_spell", _resolve_text("reshoot_spell.txt"))
         store.put_artifact(eid, "continuity_verdict_after", _resolve_json("continuity_verdict_after.json"))

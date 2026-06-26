@@ -185,6 +185,37 @@ def test_gate_decision_approve_escalate_quarantine():
     assert pipeline.gate_decision(g_fail, 2, 3, 85) == "quarantine"  # ladder exhausted
 
 
+def test_demo_take_live_serves_canonical_clip_no_wan(monkeypatch):
+    from app import oss_storage
+    monkeypatch.setattr(oss_storage, "signed_url", lambda key, **k: "https://signed/" + key)
+    monkeypatch.setattr(pipeline.httpx, "get", lambda url, timeout=0: type("R", (), {"content": b"vid"})())
+    monkeypatch.setattr(pipeline, "_extract_frame_data_url", lambda data: "data:image/png;base64,DEMO")
+    store = _store()
+    eid = store.create_episode("X", "DRAFT")
+    m = pipeline.demo_take_live(store, eid, 1)
+    assert m["source"] == "demo-live" and m["status"] == "succeeded"
+    assert m["oss_key"] == "demo/take1_S02.mp4"
+    assert m["frame_data_url"] == "data:image/png;base64,DEMO"  # live Court/Gate can run on it
+    assert store.get_artifact(eid, "take_1")["oss_key"] == "demo/take1_S02.mp4"
+
+
+def test_reshoot_no_spend_skips_wan_but_keeps_scripty_route(monkeypatch):
+    store = _store()
+    eid = store.create_episode("X", "DRAFT")
+    store.put_artifact(eid, "continuity_verdict", {"shot_id": "S02", "violations": []})
+    store.put_artifact(eid, "actor_contracts", {"actors": [{"display_name": "Luna"}]})
+    spent = {"wan": False}
+    monkeypatch.setattr(
+        pipeline.video_tasks, "submit_video",
+        lambda *a, **k: spent.__setitem__("wan", True) or "t",
+    )
+    r = pipeline.reshoot(store, eid, spend_video=False)
+    assert spent["wan"] is False and r["deferred"] is True  # no Wan call
+    assert store.get_artifact(eid, "reshoot_route")["mode"]  # route still decided + recorded
+    assert store.get_artifact(eid, "take_2") is None  # caller supplies the canonical demo take
+    assert "RESHOOT S02 ONLY" in store.get_artifact(eid, "reshoot_spell")
+
+
 def _ref_episode():
     store = _store()
     eid = store.create_episode("X", "DRAFT")

@@ -84,11 +84,13 @@ def judge_key() -> str:
 
 
 def judge_daily_cap() -> int:
-    """Max free judge live runs/day funded by the owner's key (soft cost cap)."""
+    """Max judge live runs/day on the owner's key (soft cap). Low by default — the judge
+    path spends only free text/vision and never generates Wan video, so this just bounds
+    volume; it cannot incur paid usage."""
     try:
-        return int(os.getenv("JUDGE_DAILY_CAP", "10"))
+        return int(os.getenv("JUDGE_DAILY_CAP", "3"))
     except ValueError:
-        return 10
+        return 3
 
 
 def judge_code() -> str:
