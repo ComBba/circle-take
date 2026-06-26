@@ -89,3 +89,10 @@ def judge_daily_cap() -> int:
         return int(os.getenv("JUDGE_DAILY_CAP", "10"))
     except ValueError:
         return 10
+
+
+def judge_code() -> str:
+    """Shared passcode that gates the judge-live path — published to judges (e.g. in the
+    Devpost testing instructions) so only they, not the public, can spend the owner's key.
+    Empty disables the judge-live path entirely (BYOK + fixtures only)."""
+    return os.getenv("JUDGE_CODE", "").strip()

@@ -6,6 +6,7 @@ loads with real Qwen/Wan calls behind APP_ENV=live (see docs/PLAN.md).
 """
 from __future__ import annotations
 
+import hmac
 import json
 from pathlib import Path
 from typing import Annotated, Optional
@@ -26,6 +27,9 @@ app = FastAPI(title="Circle Take API", version="0.1.0")
 # BYOK: episodes are anonymous (no accounts). Live runs use the caller's own Qwen key,
 # passed per request via the X-Qwen-Key header — never stored or logged.
 QwenKey = Annotated[Optional[str], Header(alias="X-Qwen-Key")]
+# Judges enter a passcode (published in the Devpost testing instructions) so only they —
+# not the public — can spend the owner's key via the capped judge-live path.
+JudgeCode = Annotated[Optional[str], Header(alias="X-Judge-Code")]
 
 # Demo CORS — let the static UI (and judges' browsers) call the API from any origin.
 app.add_middleware(
@@ -154,21 +158,31 @@ def demo():
     }
 
 
-def _effective_live(store: Store, eid: str, x_qwen_key: Optional[str], starting: bool = False) -> bool:
+def _effective_live(
+    store: Store,
+    eid: str,
+    x_qwen_key: Optional[str],
+    judge_code: Optional[str] = None,
+    starting: bool = False,
+) -> bool:
     """Resolve the key for this request and report whether to run live.
 
-    Priority: the caller's BYOK key (X-Qwen-Key) > a capped server-side judge key (lets
-    judges run live without their own key, owner-funded + rate-limited) > fixtures. The
-    judge key is set only into the per-request ContextVar — never stored or returned.
-    Once an episode is judge-funded (at /generate), its later endpoints stay funded.
+    Priority: the caller's BYOK key (X-Qwen-Key) > a **passcode-gated**, capped server-side
+    judge key (lets judges — who hold the published JUDGE_CODE — run live without their own
+    key, owner-funded + rate-limited) > fixtures. The judge key is set only into the
+    per-request ContextVar — never stored or returned. A correct passcode + free daily-cap
+    slot at /generate marks the episode judge-funded; its later endpoints stay funded
+    without re-sending the code. The judge-live path is OFF unless BOTH JUDGE_QWEN_KEY and
+    JUDGE_CODE are configured.
     """
     if x_qwen_key:
         config.set_request_key(x_qwen_key)
         return config.is_live_request()
-    jkey = config.judge_key()
-    if jkey:
+    jkey, expected = config.judge_key(), config.judge_code()
+    if jkey and expected:
         funded = bool(store.get_artifact(eid, "judge_funded"))
-        if not funded and starting and ratelimit.try_consume(config.judge_daily_cap()):
+        code_ok = bool(judge_code) and hmac.compare_digest(judge_code, expected)
+        if not funded and starting and code_ok and ratelimit.try_consume(config.judge_daily_cap()):
             store.put_artifact(eid, "judge_funded", True)
             funded = True
         if funded:
@@ -200,14 +214,20 @@ def get_episode(eid: str, store: Store = Depends(get_store)):
 
 
 @app.post("/api/episodes/{eid}/generate", response_model=EpisodeState)
-def generate(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
+def generate(
+    eid: str,
+    store: Store = Depends(get_store),
+    x_qwen_key: QwenKey = None,
+    x_judge_code: JudgeCode = None,
+):
     """Contracts + storyboard + risk + Take 1.
 
-    With a Qwen key (X-Qwen-Key) this runs real Qwen + Wan; without one it replays
+    With a Qwen key (X-Qwen-Key) this runs real Qwen + Wan; with a valid judge passcode
+    (X-Judge-Code) it runs live on the owner-funded capped judge key; otherwise it replays
     the golden-path fixtures (deterministic, key-free).
     """
     _owned(store, eid)
-    if _effective_live(store, eid, x_qwen_key, starting=True):
+    if _effective_live(store, eid, x_qwen_key, judge_code=x_judge_code, starting=True):
         pipeline.generate_text(store, eid, store.get_artifact(eid, "brief") or {})
         pipeline.start_take(store, eid, 1, pipeline.FAIL_PROMPT)
     else:
