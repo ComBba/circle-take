@@ -18,7 +18,7 @@ Track 2 - AI Showrunner
 
 Circle Take turns a short drama brief into a supervised episode workflow. It creates Actor, Style, and Story Contracts; builds a storyboard slate; generates video with Wan / HappyHorse; uses Qwen to judge continuity failures; reshoots only the broken shot; and stores approved story and visual anchors as memory for the next episode.
 
-The signature demo shows Luna, a fictional black cat, losing her required identity markers (yellow bead eyes, crescent chest patch, red collar) while a broken alarm clock drifts. Circle Take yells CUT, runs a real Qwen Continuity Court verdict (VERDICT: FAIL), and reshoots Shot 2 only. The honest part — and the whole point — is the Anchor Gate: in the live run it scored the reshoot identity 15/100 and **quarantined it**. Circle Take refuses to greenlight a take it can't verify, even its own reshoot, so only approved anchors become Red-Thread Memory. The tagline: reshoot the shot, not the show.
+The signature demo shows Luna, a fictional black cat, losing her required identity markers (red ribbon, yellow clay eyes, crooked left ear) while a broken alarm clock drifts. Circle Take yells CUT, runs a real Qwen Continuity Court verdict (VERDICT: FAIL), then **Scripty — an agent — picks a repair route and reshoots Shot 2 conditioned on a locked reference keyframe (Identity-Lock)**. The Anchor Gate, a real Qwen-vision check rather than a rubber stamp, then scores the reshoot: in a live free-tier run the reference-conditioned reshoot scored **identity/style/prop 95/95/95 → approved**, versus a blind text-only reshoot that scored 15/100 and was quarantined ([evidence](https://github.com/ComBba/circle-take/blob/main/docs/evidence/reshoot-spike-2026-06-24.md)). Only an approved take becomes Red-Thread Memory; when the gate can't verify a take, Circle Take escalates to the next route or honestly quarantines it. The tagline: reshoot the shot, not the show.
 
 ## Inspiration
 
@@ -30,12 +30,12 @@ Circle Take is built as an agentic production pipeline on Qwen Cloud.
 
 1. Scripty, the showrunner agent, converts the user brief into Actor, Style, and Story Contracts.
 2. The Storyboard Slate creates 3-5 shots and a Shot Risk Ledger.
-3. A Generation Route Selector chooses between T2V, R2V, I2V, and VideoEdit routes.
+3. A Generation Route Selector (`video_router`) picks the Wan mode per shot: Take 1 is t2v, and the reshoot uses an escalating **reference-conditioned ladder** (i2v → r2v → kf2v) that locks identity onto a reference keyframe.
 4. Wan / HappyHorse generates the episode shots.
 5. Qwen visual understanding reviews the generated take against the contracts.
 6. Continuity Court returns a structured verdict JSON.
-7. Reshoot Spell creates a delta-only repair instruction for the failed shot.
-8. Anchor Gate approves or quarantines the corrected take.
+7. Scripty (a Qwen-driven agent) reads the verdict and **chooses the reshoot route**, with its reasoning recorded; a delta-only Reshoot Spell + the reference keyframe regenerate only the failed shot.
+8. Anchor Gate (Qwen vision) scores the corrected take and drives **approve / escalate (next route) / honest quarantine**.
 9. Red-Thread Memory stores story facts and approved visual anchors for the next episode.
 
 ## Qwen Cloud Usage
@@ -87,7 +87,7 @@ We learned that generated video workflows need production supervision, not just 
 
 ## Built With
 
-Qwen Cloud (qwen3.7-plus text + vision), Wan 2.7 video generation (T2V/I2V/R2V/VideoEdit), FastAPI, Python 3.12, Pydantic v2, Alibaba Cloud OSS (oss2), SQLite, Docker, vanilla HTML/CSS/JS demo UI, JSON schemas.
+Alibaba Cloud Model Studio (DashScope) — Qwen3.7 (text + vision) and Wan/HappyHorse video (t2v, and reference-conditioned i2v/r2v/kf2v for the Identity-Lock reshoot); Alibaba Cloud OSS (oss2); FastAPI, Python 3.12, Pydantic v2, SQLite, Docker, vanilla HTML/CSS/JS demo UI, JSON schemas.
 
 ## Repository URL
 
@@ -122,9 +122,11 @@ docker compose up --build      # -> http://localhost:8000/ui
 
 ## Alibaba Cloud Deployment Proof
 
-https://github.com/ComBba/circle-take/blob/main/backend/app/oss_storage.py
-(also `deployment/alibaba_cloud_services.py`) — real `oss2` SDK usage uploading generated
-videos/keyframes/verdicts to OSS bucket `circle-take-media`.
+https://github.com/ComBba/circle-take/blob/main/backend/app/alibaba_cloud_integration.py
+— the single proof file. Qwen + Wan run on **Alibaba Cloud Model Studio (DashScope,
+`dashscope-intl.aliyuncs.com`)** and generated media is stored on **Alibaba Cloud OSS**
+(`oss2`, bucket `circle-take-media`). Run `python -m app.alibaba_cloud_integration` to print
+the services manifest.
 
 ## Architecture Diagram
 
