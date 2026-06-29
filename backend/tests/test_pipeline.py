@@ -52,6 +52,45 @@ def test_generate_text_stores_five_artifacts(monkeypatch):
     assert store.get_artifact(eid, "shot_risk_ledger") == {"risks": []}
 
 
+def test_generate_text_runs_contracts_concurrently_and_propagates_key(monkeypatch):
+    """The 3 brief-only builders must run concurrently AND each worker thread must see the
+    per-request key (a ContextVar that ThreadPoolExecutor does not propagate by default)."""
+    import threading
+
+    barrier = threading.Barrier(3, timeout=5)  # only clears if all 3 run at once
+    seen = {}
+
+    def mk(name, payload):
+        def stub(_brief):
+            seen[name] = config.qwen_key()  # contextvar visible off the request thread?
+            barrier.wait()  # sequential execution would deadlock -> BrokenBarrierError
+            return _M(payload)
+
+        return stub
+
+    monkeypatch.setattr(
+        pipeline.contracts, "build_actor_contracts",
+        mk("actors", {"actors": [{"display_name": "Luna", "fixed_markers": ["red ribbon"]}]}),
+    )
+    monkeypatch.setattr(pipeline.contracts, "build_style_contract", mk("style", {"rules": ["clay"]}))
+    monkeypatch.setattr(pipeline.contracts, "build_story_contract", mk("story", {"beats": {}}))
+    monkeypatch.setattr(pipeline.storyboard, "build_storyboard", lambda s: _M({"shots": []}))
+    monkeypatch.setattr(pipeline.storyboard, "build_shot_risk_ledger", lambda s, a: _M({"risks": []}))
+
+    store = _store()
+    eid = store.create_episode("X", "DRAFT")
+    token = config._request_qwen_key.set("judge-key-xyz")
+    try:
+        pipeline.generate_text(store, eid, {"title": "X"})
+    finally:
+        config._request_qwen_key.reset(token)
+
+    assert seen == {"actors": "judge-key-xyz", "style": "judge-key-xyz", "story": "judge-key-xyz"}
+    # dependent stages still ran and stored their artifacts
+    assert store.get_artifact(eid, "storyboard_slate") == {"shots": []}
+    assert store.get_artifact(eid, "shot_risk_ledger") == {"risks": []}
+
+
 def test_start_take_marks_pending(monkeypatch):
     monkeypatch.setattr(pipeline.video_tasks, "create_task", lambda *a, **k: "task-123")
     store = _store()

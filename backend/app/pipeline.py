@@ -18,6 +18,8 @@ Cloud Run cold starts (no reliance on instance-local files or a public OSS ACL).
 from __future__ import annotations
 
 import base64
+import concurrent.futures
+import contextvars
 import subprocess
 import tempfile
 from pathlib import Path
@@ -60,11 +62,30 @@ class PipelineNotReady(RuntimeError):
     """A live stage needs a Wan take that has not finished generating yet."""
 
 
+def _submit_ctx(ex: concurrent.futures.Executor, fn, *args):
+    """Submit fn to a worker carrying a COPY of the CURRENT (request) context, so the
+    per-request key (a ContextVar) is visible off the request thread — ThreadPoolExecutor
+    does not propagate context. copy_context() is called here, on the caller's thread, to
+    capture the request context; a separate copy per task avoids Context.run reentrancy.
+    """
+    return ex.submit(contextvars.copy_context().run, fn, *args)
+
+
 def generate_text(store: Store, eid: str, brief: dict) -> None:
-    """Real Qwen text stage: contracts + storyboard + shot risk, stored per episode."""
-    actors = contracts.build_actor_contracts(brief).model_dump()
-    style = contracts.build_style_contract(brief).model_dump()
-    story = contracts.build_story_contract(brief).model_dump()
+    """Real Qwen text stage: contracts + storyboard + shot risk, stored per episode.
+
+    The three brief-only builders (actor/style/story) are independent, so they run
+    concurrently; the storyboard then depends on the story and the risk ledger on the
+    storyboard + actors, so those stay sequential. Combined with thinking-off Qwen calls
+    this keeps the live `generate` stage well under the client timeout.
+    """
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+        f_actors = _submit_ctx(ex, contracts.build_actor_contracts, brief)
+        f_style = _submit_ctx(ex, contracts.build_style_contract, brief)
+        f_story = _submit_ctx(ex, contracts.build_story_contract, brief)
+        actors = f_actors.result().model_dump()
+        style = f_style.result().model_dump()
+        story = f_story.result().model_dump()
     slate = storyboard.build_storyboard(story).model_dump()
     risk = storyboard.build_shot_risk_ledger(slate, actors).model_dump()
     store.put_artifact(eid, "actor_contracts", actors)
