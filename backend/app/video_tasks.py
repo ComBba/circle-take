@@ -130,7 +130,10 @@ def submit_video(
     """
     inp: dict[str, Any] = {"prompt": prompt}
     if img_url:
-        inp["img_url"] = img_url
+        # i2v: wan2.7-i2v takes the unified input.media[] — the conditioning image is the
+        # clip's first frame. The legacy input.img_url is rejected ("Field required:
+        # input.media"); render-verified that media=[{type:first_frame,url}] succeeds.
+        inp["media"] = [{"type": "first_frame", "url": img_url}]
     if first_frame_url:
         inp["first_frame_url"] = first_frame_url
     if last_frame_url:

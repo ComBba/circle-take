@@ -47,6 +47,10 @@ def reshoot_ladder(reference_image_url: Optional[str]) -> List[Dict[str, Any]]:
     """
     ref = reference_image_url
     if ref:
+        # i2v is the render-verified primary rung (submit_video maps img_url ->
+        # input.media[{type:first_frame}] for wan2.7). NOTE: wan2.7-r2v also moved to the
+        # unified input.media[] and its subject-reference schema is not yet validated
+        # (reference_urls + bare first_frame both rejected) — escalation-only, follow-up.
         return [
             {"mode": "i2v", "model": WAN_I2V, "ref": {"img_url": ref}},
             {"mode": "r2v", "model": WAN_R2V, "ref": {"reference_urls": [ref]}},
