@@ -20,7 +20,9 @@ sys.path.insert(0, str(_ROOT / "backend"))
 from app import anchor_gate, config, pipeline, video_tasks  # noqa: E402
 
 REF_URL = sys.argv[1]
-I2V_MODEL = sys.argv[2] if len(sys.argv) > 2 else "wan2.6-i2v-flash"
+# wan2.7-i2v (unified input.media[] first-frame conditioning) is the current default;
+# submit_video maps img_url -> media[{type:first_frame}]. Render-verified 2026-06-29.
+I2V_MODEL = sys.argv[2] if len(sys.argv) > 2 else "wan2.7-i2v"
 
 FIX_PROMPT = (
     "clay stop-motion, a black clay cat with a bright RED RIBBON around her neck, round "

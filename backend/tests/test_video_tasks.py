@@ -77,14 +77,17 @@ def _capture(check):
     return _client(handler)
 
 
-def test_submit_i2v_uses_resolution_and_img_url(monkeypatch):
+def test_submit_i2v_uses_resolution_and_media_first_frame(monkeypatch):
     monkeypatch.setattr(vt.config, "qwen_key", lambda: "k")
 
     def check(body, url):
         assert "video-generation/video-synthesis" in url
         assert body["parameters"].get("resolution") == "720P"
         assert "size" not in body["parameters"]
-        assert body["input"]["img_url"] == "https://ref/luna.png"
+        # wan2.7-i2v unified schema: the conditioning image rides in input.media[] as the
+        # first frame (legacy input.img_url is rejected by the API). Render-verified.
+        assert body["input"]["media"] == [{"type": "first_frame", "url": "https://ref/luna.png"}]
+        assert "img_url" not in body["input"]
 
     assert (
         vt.submit_video(
