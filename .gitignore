@@ -25,6 +25,10 @@ node_modules/
 .next/
 out/
 
+# installed agent skills (reproducible: npx skills add qwencloud/qwencloud-ai)
+.agents/
+skills-lock.json
+
 # os / editor
 .DS_Store
 .idea/

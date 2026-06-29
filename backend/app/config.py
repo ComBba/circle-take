@@ -57,3 +57,44 @@ def is_live() -> bool:
 def is_live_request() -> bool:
     """Run the real pipeline only in live mode AND when a key is available (BYOK or env)."""
     return app_env() == "live" and bool(qwen_key())
+
+
+def gate_threshold() -> int:
+    """Anchor Gate pass threshold — every score (identity/style/prop) must meet it.
+    Env-tunable (CIRCLE_TAKE_GATE_THRESHOLD); set empirically in the live spike."""
+    try:
+        return int(os.getenv("CIRCLE_TAKE_GATE_THRESHOLD", "85"))
+    except ValueError:
+        return 85
+
+
+def reference_image_url() -> str:
+    """URL of the locked identity reference keyframe used to condition the reshoot.
+    Empty until a Reference Pack keyframe is generated/hosted (then the reshoot is
+    reference-conditioned instead of a blind t2v)."""
+    return os.getenv("CIRCLE_TAKE_REFERENCE_URL", "").strip()
+
+
+def judge_key() -> str:
+    """Server-side judge key (the owner's) for the capped judge live path — lets judges
+    see real Qwen+Wan without their own key. Empty disables it. Used only inside the
+    per-request ContextVar; never stored in artifacts, returned, or logged."""
+    k = os.getenv("JUDGE_QWEN_KEY", "").strip()
+    return "" if k in ("", "replace_me") else k
+
+
+def judge_daily_cap() -> int:
+    """Max judge live runs/day on the owner's key (soft cap). Low by default — the judge
+    path spends only free text/vision and never generates Wan video, so this just bounds
+    volume; it cannot incur paid usage."""
+    try:
+        return int(os.getenv("JUDGE_DAILY_CAP", "3"))
+    except ValueError:
+        return 3
+
+
+def judge_code() -> str:
+    """Shared passcode that gates the judge-live path — published to judges (e.g. in the
+    Devpost testing instructions) so only they, not the public, can spend the owner's key.
+    Empty disables the judge-live path entirely (BYOK + fixtures only)."""
+    return os.getenv("JUDGE_CODE", "").strip()

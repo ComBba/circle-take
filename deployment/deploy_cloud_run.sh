@@ -30,12 +30,17 @@ for line in Path(src).read_text().splitlines():
         env[k.strip()] = v.strip().strip('"').strip("'")
 out = {"APP_ENV": "live", "DATABASE_URL": "sqlite:////tmp/circle_take.db"}
 for k in ["QWEN_BASE_URL", "QWEN_VIDEO_BASE_URL", "QWEN_TEXT_MODEL", "QWEN_VISION_MODEL",
-          "WAN_T2V_MODEL", "WAN_I2V_MODEL", "WAN_R2V_MODEL", "WAN_VIDEOEDIT_MODEL",
+          "WAN_T2V_MODEL", "WAN_I2V_MODEL", "WAN_R2V_MODEL", "WAN_KF2V_MODEL", "WAN_VIDEOEDIT_MODEL",
           "ALIBABA_CLOUD_REGION", "ALIBABA_CLOUD_OSS_BUCKET",
-          "ALIBABA_CLOUD_ACCESS_KEY_ID", "ALIBABA_CLOUD_ACCESS_KEY_SECRET"]:
+          "ALIBABA_CLOUD_ACCESS_KEY_ID", "ALIBABA_CLOUD_ACCESS_KEY_SECRET",
+          "CIRCLE_TAKE_GATE_THRESHOLD", "CIRCLE_TAKE_REFERENCE_URL",
+          # Judge-live path (opt-in): forwarded only if set in .env.local. JUDGE_QWEN_KEY is the
+          # owner's key for the passcode-gated, capped judge path (distinct from BYOK).
+          "JUDGE_QWEN_KEY", "JUDGE_CODE", "JUDGE_DAILY_CAP"]:
     if env.get(k):
         out[k] = env[k]
-# Deliberately omitted: QWEN_API_KEY (BYOK) and JWT_SECRET (no accounts).
+# Deliberately omitted: QWEN_API_KEY (BYOK — the public never uses a server key) and
+# JWT_SECRET (no accounts). JUDGE_QWEN_KEY is the separate, opt-in judge-path key above.
 Path(dst).write_text("\n".join(f"{k}: {json.dumps(v)}" for k, v in out.items()) + "\n")
 print(f"BYOK env keys: {len(out)} (QWEN_API_KEY present: {'QWEN_API_KEY' in out})", file=sys.stderr)
 PY

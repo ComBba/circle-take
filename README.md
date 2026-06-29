@@ -25,7 +25,10 @@ Wan 2.7 generation. Nothing is stored server-side.
 | Public Watch-the-loop demo (no key, no account) | ✅ `GET /api/demo` golden path + presigned clips |
 | BYOK live: per-request Qwen key (`X-Qwen-Key`) | ✅ used per request, never stored or logged |
 | Live Qwen3.7 contracts / Continuity Court | ✅ real Qwen-vision verdict from the generated frame |
-| Live Wan 2.7 video gen / reshoot (async per request) | ✅ create→poll; serves the caller's own DashScope URL |
+| Live Wan video gen (async per request) | ✅ create→poll; serves the caller's own DashScope URL |
+| **Generation-route selector + reference-conditioned reshoot (Identity-Lock)** | ✅ i2v/r2v/kf2v ladder on a locked keyframe — **live-proven 95/95/95 → approved** (vs blind-t2v 15/100), [evidence](docs/evidence/reshoot-spike-2026-06-24.md) |
+| **Agentic Scripty (Qwen-driven repair decision)** | ✅ picks the reshoot route + records its reasoning |
+| **Passcode-gated judge-live (no paid spend by design)** | ✅ judges with the published code (`/ui/?code=…`) run the **live Qwen brain on the canonical clips** — zero Wan/paid spend; BYOK = full live incl. fresh video; key + code never returned |
 | Storage | ✅ none — no accounts, no keys; ephemeral SQLite |
 | Deploy (Cloud Run, single instance) | ✅ `deployment/cloud_run_deploy.md` |
 
@@ -93,19 +96,23 @@ Without `X-Qwen-Key` the endpoints replay golden-path fixtures (no Qwen calls).
 ```bash
 cd backend && source .venv/bin/activate
 pip install -r requirements-dev.txt
-python -m pytest -q       # 77 passed, 1 skipped (Postgres roundtrip: set TEST_DATABASE_URL)
+python -m pytest -q       # 104 passed, 1 skipped (Postgres roundtrip: set TEST_DATABASE_URL)
 ```
 
-## Qwen Cloud Usage
+## Qwen Cloud Usage (Alibaba Cloud Model Studio / DashScope)
 
-| Need | Model (latest, verified) |
+| Need | Model |
 |---|---|
-| Contracts / storyboard / reasoning | `qwen3.7-plus` (multimodal, GA 2026-06-01) |
-| Continuity Court (vision verdict) | `qwen3.7-plus` |
-| Establishing / character / frame-control shots | Wan 2.7 — `wan2.7-t2v` / `wan2.7-r2v` / `wan2.7-i2v` |
-| Targeted reshoot (edit) | `wan2.7-videoedit` |
+| Contracts / storyboard / **Scripty repair decision** (text) | `qwen3.7-max` / `qwen3.7-plus` |
+| Continuity Court + Anchor Gate (vision verdicts) | `qwen3.7-plus` / `qwen3-vl-plus` |
+| Take 1 (establishing, intentional drift) | Wan `wan2.7-t2v` (t2v) |
+| **Reference-conditioned reshoot (Identity-Lock)** | Wan `wan2.7-i2v` / `wan2.7-r2v` / `wan2.2-kf2v-flash` (conditioned on the locked keyframe) |
+| Targeted edit fallback | Wan `wan2.1-vace-plus` (vace) |
 
-Endpoint: `dashscope-intl.aliyuncs.com` (chat: `/compatible-mode/v1`; video: async `video-synthesis` → poll `/tasks/{id}`). See `docs/verified_models.md` and `docs/official_sources.md`.
+The AI runs on **Alibaba Cloud Model Studio (DashScope)**: `dashscope-intl.aliyuncs.com`
+(chat: `/compatible-mode/v1`; video: async `video-synthesis` / `image2video` → poll
+`/tasks/{id}`). Route selection lives in `video_router.reshoot_ladder`; the mode-aware
+submitter is `video_tasks.submit_video`.
 
 ## Architecture
 
@@ -128,9 +135,11 @@ flowchart LR
   DEMO --> OSS[("Alibaba OSS")]
 ```
 
-Deployed on **Google Cloud Run** (single instance, ephemeral SQLite — nothing durable is
-stored) — see [`deployment/cloud_run_deploy.md`](deployment/cloud_run_deploy.md). The public
-demo clips are presigned from the Alibaba OSS deployment-proof bucket.
+The **AI compute runs on Alibaba Cloud Model Studio** (Qwen + Wan via DashScope) and media is
+stored on **Alibaba OSS**; the orchestrator container runs on **Google Cloud Run** (single
+instance, ephemeral SQLite — nothing durable) — see
+[`deployment/cloud_run_deploy.md`](deployment/cloud_run_deploy.md). Public demo clips are
+presigned from the Alibaba OSS bucket.
 
 Full diagrams (system / state machine / live sequence) + `architecture.png` in [`docs/architecture.md`](docs/architecture.md).
 State machine: `DRAFT → CONTRACTED → STORYBOARDED → GENERATING → TAKE_1_READY → REVIEWING → CUT_REQUIRED → RESHOOTING → TAKE_2_READY → ANCHOR_APPROVED → REMEMBERED → AUTO_GREENLIT`.
@@ -139,9 +148,12 @@ State machine: `DRAFT → CONTRACTED → STORYBOARDED → GENERATING → TAKE_1_
 
 See `.env.example`. Model IDs are centralized there. Live runs use the caller's **BYOK** `X-Qwen-Key` per request (a server `QWEN_API_KEY` is only needed for the offline scripts in `scripts/`); `DATABASE_URL` is ephemeral SQLite; the public demo clips are presigned with `ALIBABA_CLOUD_*`.
 
-## Deployment Proof
+## Alibaba Cloud Deployment Proof
 
-See `deployment/alibaba_cloud_proof.md` and `deployment/alibaba_cloud_services.py`.
+The single linkable proof file is [`backend/app/alibaba_cloud_integration.py`](backend/app/alibaba_cloud_integration.py)
+— it consolidates the two Alibaba Cloud touchpoints (Model Studio / DashScope for Qwen + Wan,
+OSS via `oss2`) and prints a services manifest (`python -m app.alibaba_cloud_integration`).
+The AI compute runs on Alibaba Cloud Model Studio; generated media is stored on Alibaba OSS.
 
 ## License
 

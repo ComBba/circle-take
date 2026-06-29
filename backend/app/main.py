@@ -6,6 +6,7 @@ loads with real Qwen/Wan calls behind APP_ENV=live (see docs/PLAN.md).
 """
 from __future__ import annotations
 
+import hmac
 import json
 from pathlib import Path
 from typing import Annotated, Optional
@@ -15,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import config, oss_storage, pipeline
+from . import config, oss_storage, pipeline, ratelimit
 from .deps import get_store
 from .schemas import EpisodeBrief, EpisodeState, ProductionReport
 from .state import ORDER, EpisodeStatus
@@ -26,6 +27,9 @@ app = FastAPI(title="Circle Take API", version="0.1.0")
 # BYOK: episodes are anonymous (no accounts). Live runs use the caller's own Qwen key,
 # passed per request via the X-Qwen-Key header — never stored or logged.
 QwenKey = Annotated[Optional[str], Header(alias="X-Qwen-Key")]
+# Judges enter a passcode (published in the Devpost testing instructions) so only they —
+# not the public — can spend the owner's key via the capped judge-live path.
+JudgeCode = Annotated[Optional[str], Header(alias="X-Judge-Code")]
 
 # Demo CORS — let the static UI (and judges' browsers) call the API from any origin.
 app.add_middleware(
@@ -154,9 +158,37 @@ def demo():
     }
 
 
-def _live(x_qwen_key: Optional[str]) -> bool:
-    """Stash the caller's BYOK key for this request and report whether to run live."""
-    config.set_request_key(x_qwen_key)
+def _effective_live(
+    store: Store,
+    eid: str,
+    x_qwen_key: Optional[str],
+    judge_code: Optional[str] = None,
+    starting: bool = False,
+) -> bool:
+    """Resolve the key for this request and report whether to run live.
+
+    Priority: the caller's BYOK key (X-Qwen-Key) > a **passcode-gated**, capped server-side
+    judge key (lets judges — who hold the published JUDGE_CODE — run live without their own
+    key, owner-funded + rate-limited) > fixtures. The judge key is set only into the
+    per-request ContextVar — never stored or returned. A correct passcode + free daily-cap
+    slot at /generate marks the episode judge-funded; its later endpoints stay funded
+    without re-sending the code. The judge-live path is OFF unless BOTH JUDGE_QWEN_KEY and
+    JUDGE_CODE are configured.
+    """
+    if x_qwen_key:
+        config.set_request_key(x_qwen_key)
+        return config.is_live_request()
+    jkey, expected = config.judge_key(), config.judge_code()
+    if jkey and expected:
+        funded = bool(store.get_artifact(eid, "judge_funded"))
+        code_ok = bool(judge_code) and hmac.compare_digest(judge_code, expected)
+        if not funded and starting and code_ok and ratelimit.try_consume(config.judge_daily_cap()):
+            store.put_artifact(eid, "judge_funded", True)
+            funded = True
+        if funded:
+            config.set_request_key(jkey)
+            return config.is_live_request()
+    config.set_request_key(x_qwen_key)  # None -> "" (fixtures unless env is live)
     return config.is_live_request()
 
 
@@ -182,16 +214,25 @@ def get_episode(eid: str, store: Store = Depends(get_store)):
 
 
 @app.post("/api/episodes/{eid}/generate", response_model=EpisodeState)
-def generate(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
+def generate(
+    eid: str,
+    store: Store = Depends(get_store),
+    x_qwen_key: QwenKey = None,
+    x_judge_code: JudgeCode = None,
+):
     """Contracts + storyboard + risk + Take 1.
 
-    With a Qwen key (X-Qwen-Key) this runs real Qwen + Wan; without one it replays
+    With a Qwen key (X-Qwen-Key) this runs real Qwen + Wan; with a valid judge passcode
+    (X-Judge-Code) it runs live on the owner-funded capped judge key; otherwise it replays
     the golden-path fixtures (deterministic, key-free).
     """
     _owned(store, eid)
-    if _live(x_qwen_key):
+    if _effective_live(store, eid, x_qwen_key, judge_code=x_judge_code, starting=True):
         pipeline.generate_text(store, eid, store.get_artifact(eid, "brief") or {})
-        pipeline.start_take(store, eid, 1, pipeline.FAIL_PROMPT)
+        if store.get_artifact(eid, "judge_funded"):
+            pipeline.demo_take_live(store, eid, 1)  # no-spend judge path: canonical clip + live frame
+        else:
+            pipeline.start_take(store, eid, 1, pipeline.FAIL_PROMPT)
     else:
         store.put_artifact(eid, "actor_contracts", _resolve_json("actor_contracts.json"))
         store.put_artifact(eid, "style_contract", _resolve_json("style_contract.json"))
@@ -209,7 +250,7 @@ def poll_take(eid: str, n: int, store: Store = Depends(get_store), x_qwen_key: Q
     _owned(store, eid)
     if n not in (1, 2):
         raise HTTPException(status_code=404, detail="unknown take")
-    if _live(x_qwen_key):
+    if _effective_live(store, eid, x_qwen_key):
         pipeline.poll_take(store, eid, n)
     return _state(store, eid)
 
@@ -218,7 +259,7 @@ def poll_take(eid: str, n: int, store: Store = Depends(get_store), x_qwen_key: Q
 def review(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
     """Continuity Court verdict. Live mode sends Take 1's real frame to Qwen vision."""
     _owned(store, eid)
-    if _live(x_qwen_key):
+    if _effective_live(store, eid, x_qwen_key):
         try:
             pipeline.review(store, eid)
         except pipeline.PipelineNotReady as e:
@@ -235,8 +276,12 @@ def review(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = No
 @app.post("/api/episodes/{eid}/reshoot", response_model=EpisodeState)
 def reshoot(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
     _owned(store, eid)
-    if _live(x_qwen_key):
-        pipeline.reshoot(store, eid)
+    if _effective_live(store, eid, x_qwen_key):
+        if store.get_artifact(eid, "judge_funded"):
+            pipeline.reshoot(store, eid, spend_video=False)  # Scripty decides; no Wan spend
+            pipeline.demo_take_live(store, eid, 2)
+        else:
+            pipeline.reshoot(store, eid)
     else:
         store.put_artifact(eid, "reshoot_spell", _resolve_text("reshoot_spell.txt"))
         store.put_artifact(eid, "continuity_verdict_after", _resolve_json("continuity_verdict_after.json"))
@@ -248,14 +293,21 @@ def reshoot(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = N
 @app.post("/api/episodes/{eid}/memory", response_model=EpisodeState)
 def memory(eid: str, store: Store = Depends(get_store), x_qwen_key: QwenKey = None):
     _owned(store, eid)
-    if _live(x_qwen_key):
+    if _effective_live(store, eid, x_qwen_key):
         try:
-            pipeline.memory_stage(store, eid)
+            decision = pipeline.memory_stage(store, eid)
         except pipeline.PipelineNotReady as e:
             raise HTTPException(status_code=409, detail=str(e)) from e
+        if decision == "escalate":
+            # Below threshold but ladder rungs remain: reshoot the next route and stay at
+            # TAKE_2_READY so the client re-polls Take 2, then calls /memory again.
+            route = store.get_artifact(eid, "reshoot_route") or {"attempt": 0}
+            pipeline.reshoot(store, eid, attempt=route.get("attempt", 0) + 1)
+            return _state(store, eid)
     else:
         store.put_artifact(eid, "anchor_gate", _resolve_json("anchor_gate.json"))
         store.put_artifact(eid, "red_thread_memory", _resolve_json("red_thread_memory.json"))
+    # approve (greenlit + remembered) or quarantine (honest refusal, no memory) — both terminal.
     _advance_to(store, eid, EpisodeStatus.AUTO_GREENLIT)
     return _state(store, eid)
 
