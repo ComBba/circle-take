@@ -46,6 +46,22 @@ from .store import Store
 # Canonical demo clips (Alibaba OSS) reused by the no-spend judge path.
 _DEMO_TAKE_KEY = {1: "demo/take1_S02.mp4", 2: "demo/take2_S02.mp4"}
 
+# Shot-scoped canonical contract for the no-spend judge path. The demo's S02 is a single-
+# character shot (Luna's red ribbon is THE continuity assertion), so the gate/court must be
+# scoped to it — handing them the full auto-generated episode cast (Luna+Tick+Arthur) asks
+# the vision model to find an alarm clock + office worker in a cat close-up and wrongly
+# quarantines the canonical take (measured: full-cast 20/85/15 → quarantine; scoped 100/100/
+# 100 → approve). The vision verdict itself is still a live Qwen call on the real frame.
+_DEMO_ACTORS = {"actors": [{
+    "actor_id": "luna_cat", "display_name": "Luna", "role": "cat",
+    "fixed_markers": ["black clay cat", "red ribbon"],
+    "forbidden_drift": ["missing ribbon", "realistic fur"],
+}]}
+_DEMO_STYLE = {"style_id": "clay_stop_motion_mvp", "rules": [
+    "handmade clay texture", "visible fingerprints", "tabletop miniature set",
+    "pose-to-pose stop-motion feel", "no glossy 3D look", "no photorealism",
+]}
+
 # Demo-failure strategy = Option B (transparent constructed): Take 1 omits Luna's
 # ribbon (the Court catches it), Take 2 restores it. Both are real generations.
 FAIL_PROMPT = (
@@ -176,13 +192,23 @@ def _contracts(store: Store, eid: str) -> tuple[dict, dict]:
     return {"actors": actors.get("actors", [])}, style
 
 
+def _eval_contracts(store: Store, eid: str) -> tuple[dict, dict]:
+    """Contracts the Continuity Court / Anchor Gate score against. The no-spend judge path
+    serves the canonical S02 demo clips, so it evaluates against the shot-scoped canonical
+    contract (deterministic greenlight, immune to per-run live-cast drift); every other path
+    uses the live per-episode contracts. The full live contracts remain stored for display."""
+    if store.get_artifact(eid, "judge_funded"):
+        return {"actors": _DEMO_ACTORS["actors"]}, _DEMO_STYLE
+    return _contracts(store, eid)
+
+
 def review(store: Store, eid: str) -> dict:
     """Real Qwen-vision Continuity Court on Take 1's frame. 409 if take not ready."""
     take1 = store.get_artifact(eid, "take_1") or {}
     frame = take1.get("frame_data_url")
     if not frame:
         raise PipelineNotReady("Take 1 is still generating; poll /take/1/poll first")
-    ac, style = _contracts(store, eid)
+    ac, style = _eval_contracts(store, eid)
     verdict = continuity_court.judge("S02", frame, ac, style).model_dump()
     store.put_artifact(eid, "continuity_verdict", verdict)
     return verdict
@@ -269,7 +295,7 @@ def memory_stage(store: Store, eid: str) -> str:
     frame = take2.get("frame_data_url")
     if not frame:
         raise PipelineNotReady("Take 2 is still generating; poll /take/2/poll first")
-    ac, style = _contracts(store, eid)
+    ac, style = _eval_contracts(store, eid)
     gate: dict[str, Any] = anchor_gate.evaluate("S02_take_two", frame, ac, style).model_dump()
     store.put_artifact(eid, "anchor_gate", gate)
 

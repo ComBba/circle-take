@@ -91,6 +91,52 @@ def test_generate_text_runs_contracts_concurrently_and_propagates_key(monkeypatc
     assert store.get_artifact(eid, "shot_risk_ledger") == {"risks": []}
 
 
+def test_judge_path_gates_against_canonical_shot_contract(monkeypatch):
+    """The no-spend judge path must score the canonical clips against the shot-scoped
+    canonical S02 contract (Luna only) — not the full live cast — so the demo greenlights."""
+    cap = {}
+    monkeypatch.setattr(
+        pipeline.anchor_gate, "evaluate",
+        lambda shot, frame, ac, style: cap.update(ac=ac, style=style) or _M(
+            {"identity_score": 100, "style_score": 100, "prop_score": 100, "anchor_status": "approved"}),
+    )
+    monkeypatch.setattr(pipeline.memory_mod, "build_red_thread_memory", lambda g: {"ok": 1})
+    store = _store()
+    eid = store.create_episode("X", "DRAFT")
+    store.put_artifact(eid, "judge_funded", True)
+    # full live cast is stored (for display) but must NOT be what the gate scores against:
+    store.put_artifact(eid, "actor_contracts", {"actors": [
+        {"display_name": "Luna"}, {"display_name": "Tick"}, {"display_name": "Arthur"}]})
+    store.put_artifact(eid, "take_2", {"frame_data_url": "data:image/png;base64,AAAA"})
+    store.put_artifact(eid, "reshoot_route", {"attempt": 0, "ladder_len": 1})
+
+    decision = pipeline.memory_stage(store, eid)
+
+    assert [a["display_name"] for a in cap["ac"]["actors"]] == ["Luna"]  # shot-scoped, not 3-cast
+    assert "red ribbon" in cap["ac"]["actors"][0]["fixed_markers"]
+    assert decision == "approve"
+
+
+def test_non_judge_path_gates_against_live_contracts(monkeypatch):
+    """BYOK / non-judge episodes keep scoring against their live per-episode contracts."""
+    cap = {}
+    monkeypatch.setattr(
+        pipeline.anchor_gate, "evaluate",
+        lambda shot, frame, ac, style: cap.update(ac=ac) or _M(
+            {"identity_score": 50, "style_score": 50, "prop_score": 50, "anchor_status": "quarantine"}),
+    )
+    store = _store()
+    eid = store.create_episode("X", "DRAFT")  # no judge_funded
+    store.put_artifact(eid, "actor_contracts", {"actors": [
+        {"display_name": "Luna"}, {"display_name": "Tick"}]})
+    store.put_artifact(eid, "take_2", {"frame_data_url": "data:image/png;base64,AAAA"})
+    store.put_artifact(eid, "reshoot_route", {"attempt": 0, "ladder_len": 1})
+
+    pipeline.memory_stage(store, eid)
+
+    assert [a["display_name"] for a in cap["ac"]["actors"]] == ["Luna", "Tick"]
+
+
 def test_start_take_marks_pending(monkeypatch):
     monkeypatch.setattr(pipeline.video_tasks, "create_task", lambda *a, **k: "task-123")
     store = _store()
