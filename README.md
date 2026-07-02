@@ -30,7 +30,7 @@ Wan 2.7 generation. Nothing is stored server-side.
 | **Agentic Scripty (Qwen-driven repair decision)** | ✅ picks the reshoot route + records its reasoning |
 | **Passcode-gated judge-live (no paid spend by design)** | ✅ judges with the published code (`/ui/?code=…`) run the **live Qwen brain on the canonical clips** — zero Wan/paid spend; BYOK = full live incl. fresh video; key + code never returned |
 | Storage | ✅ none — no accounts, no keys; ephemeral SQLite |
-| Deploy — **Alibaba Cloud ECS** (Singapore, Docker Compose) | ✅ live-proven — instance `circletake-proof`, `/health` 200 (`deployment/alibaba_cloud_proof.md`); Cloud Run HTTPS mirror for the demo link |
+| Deploy | ✅ **Live demo on Google Cloud Run** (HTTPS, `mode:live`); backend also **deployed & proven on Alibaba Cloud ECS** (Singapore) — see `deployment/alibaba_cloud_proof.md` |
 
 > **How "live" works (honest):** watching the loop is public and key-free. To generate your own
 > episode, you pass a Qwen key via `X-Qwen-Key` (kept only in your browser). The server uses it
@@ -136,11 +136,11 @@ flowchart LR
 ```
 
 The **AI compute runs on Alibaba Cloud Model Studio** (Qwen + Wan via DashScope) and media is
-stored on **Alibaba OSS**; the orchestrator container is **deployed and running on Alibaba
-Cloud ECS** (Singapore `ap-southeast-1`, Docker Compose — instance `circletake-proof`,
-`http://43.98.203.221:8000`, ephemeral SQLite) — see
-[`deployment/alibaba_cloud_proof.md`](deployment/alibaba_cloud_proof.md). A Google Cloud Run
-HTTPS mirror serves the public demo link. Public demo clips are presigned from the Alibaba OSS bucket.
+stored on **Alibaba OSS**. The orchestrator container was **deployed & run on Alibaba Cloud ECS**
+(Singapore `ap-southeast-1`, Docker Compose — instance `circletake-proof`; proof in
+[`deployment/alibaba_cloud_proof.md`](deployment/alibaba_cloud_proof.md)), and the public demo is
+served from **Google Cloud Run** (HTTPS, ephemeral SQLite — nothing durable). Public demo clips are
+presigned from the Alibaba OSS bucket.
 
 Full diagrams (system / state machine / live sequence) + `architecture.png` in [`docs/architecture.md`](docs/architecture.md).
 State machine: `DRAFT → CONTRACTED → STORYBOARDED → GENERATING → TAKE_1_READY → REVIEWING → CUT_REQUIRED → RESHOOTING → TAKE_2_READY → ANCHOR_APPROVED → REMEMBERED → AUTO_GREENLIT`.
@@ -151,11 +151,12 @@ See `.env.example`. Model IDs are centralized there. Live runs use the caller's 
 
 ## Alibaba Cloud Deployment Proof
 
-**The backend is deployed and running on Alibaba Cloud ECS** (Singapore `ap-southeast-1`,
-Docker Compose): instance `i-t4n9vck3xkdijyhfxeb3` ("circletake-proof"), `http://43.98.203.221:8000`
-(`/health` → 200) — details + console screenshot in
-[`deployment/alibaba_cloud_proof.md`](deployment/alibaba_cloud_proof.md) and
-[`docs/screenshots/alibaba-deployment.png`](docs/screenshots/alibaba-deployment.png).
+**The backend was deployed & run on Alibaba Cloud ECS** (Singapore `ap-southeast-1`, Docker Compose):
+instance `i-t4n9vck3xkdijyhfxeb3` ("circletake-proof"), `/health` → 200 verified at deploy time — console
+screenshot in [`docs/screenshots/alibaba-deployment.png`](docs/screenshots/alibaba-deployment.png) and
+details in [`deployment/alibaba_cloud_proof.md`](deployment/alibaba_cloud_proof.md). (Instance released
+after proof capture to avoid cost; the live demo runs on Cloud Run. Per the rules, a project "at some
+point deployed and running on Alibaba Cloud" qualifies.)
 
 The single linkable code proof is [`backend/app/alibaba_cloud_integration.py`](backend/app/alibaba_cloud_integration.py)
 — it consolidates the two Alibaba Cloud touchpoints (Model Studio / DashScope for Qwen + Wan,
