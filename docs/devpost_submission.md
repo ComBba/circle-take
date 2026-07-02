@@ -101,13 +101,12 @@ https://youtu.be/QZrLzBsiJbo
 
 ## Live Demo / Testing URL
 
-**Live (running on Alibaba Cloud ECS):** http://43.98.203.221:8000/ui/ — Singapore `ap-southeast-1`.
-HTTPS mirror: https://circle-take-145226765474.us-central1.run.app/ui/
+**Live (click to run, no install):** https://circle-take-145226765474.us-central1.run.app/ui/ — Google Cloud Run (HTTPS, `mode:live`).
 
-The backend is **deployed and running on Alibaba Cloud ECS** (instance `circletake-proof`, Docker
-Compose) in fixture mode (deterministic golden path, no credentials, no per-request cost). It uses
-Qwen Cloud (DashScope) + Alibaba Cloud OSS at runtime in live mode — Alibaba deployment proof:
-`backend/app/alibaba_cloud_integration.py` + `deployment/alibaba_cloud_proof.md`.
+The backend was **deployed & run on Alibaba Cloud ECS** (instance `circletake-proof`, Docker Compose,
+Singapore) — proof: `docs/screenshots/alibaba-deployment.png` + a short recording + the code file
+`backend/app/alibaba_cloud_integration.py` + `deployment/alibaba_cloud_proof.md`. It uses Qwen Cloud
+(DashScope) + Alibaba Cloud OSS at runtime.
 
 Or run free locally:
 ```bash
@@ -124,9 +123,9 @@ docker compose up --build      # -> http://localhost:8000/ui
 
 ## Alibaba Cloud Deployment Proof
 
-**Backend deployed & running on Alibaba Cloud ECS** — instance `i-t4n9vck3xkdijyhfxeb3`
-("circletake-proof"), `ecs.e-c1m2.large`, region `ap-southeast-1` (Singapore), reachable at
-`http://43.98.203.221:8000` (`/health` → 200). Console screenshot: `docs/screenshots/alibaba-deployment.png`.
+**Backend deployed & run on Alibaba Cloud ECS** — instance `i-t4n9vck3xkdijyhfxeb3`
+("circletake-proof"), `ecs.e-c1m2.large`, region `ap-southeast-1` (Singapore); `/health` → 200 verified
+at deploy time. Console screenshot: `docs/screenshots/alibaba-deployment.png` + a short recording.
 
 Code proof: https://github.com/ComBba/circle-take/blob/main/backend/app/alibaba_cloud_integration.py
 — Qwen + Wan run on **Alibaba Cloud Model Studio (DashScope, `dashscope-intl.aliyuncs.com`)** and
