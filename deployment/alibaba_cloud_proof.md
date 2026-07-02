@@ -14,15 +14,21 @@ that demonstrates Alibaba Cloud service/API usage.
 This satisfies the requirement even before the public URL is live: the code demonstrably
 calls Alibaba Cloud APIs.
 
-## Fill after provisioning (one line each)
+## Deployment (provisioned & verified 2026-07-02)
 
 | Field | Value |
 |---|---|
-| Deployment service | `[FILL: ECS + Docker Compose | Function Compute | Container Service ACK]` |
-| Region | `[FILL: e.g. ap-southeast-1]` |
-| Backend URL (live) | `[FILL: https://...]` |
-| OSS bucket | `[FILL]` |
-| Devpost proof link | `[FILL: https://github.com/<you>/circle-take/blob/main/backend/app/oss_storage.py]` |
+| Deployment service | **Alibaba Cloud ECS + Docker Compose** |
+| Instance | `i-t4n9vck3xkdijyhfxeb3` ("circletake-proof") · `ecs.e-c1m2.large` (2 vCPU / 4 GB) · Ubuntu 24.04 |
+| Region / Zone | `ap-southeast-1` (Singapore) / `ap-southeast-1a` |
+| Backend URL | `http://43.98.203.221:8000` — `/health` → 200, `/ui/` demo → 200 |
+| OSS bucket | `circle-take-media` (`oss-ap-southeast-1.aliyuncs.com`) |
+| Devpost proof link | `https://github.com/ComBba/circle-take/blob/main/backend/app/alibaba_cloud_integration.py` |
+| Console screenshot | `docs/screenshots/alibaba-deployment.png` (ECS console → instance `circletake-proof` Running) |
+
+Verified: `curl http://43.98.203.221:8000/health` → `{"status":"ok","service":"circle-take","mode":"fixture"}`
+(HTTP 200); container `circle-take-api-1` **Up (healthy)**. The backend runs on Alibaba Cloud ECS; Qwen
+(DashScope, `dashscope-intl.aliyuncs.com`) + OSS are exercised by the code (see the proof-link file).
 
 See `deployment/ecs_or_fc_deploy.md` for the step-by-step deploy runbook.
 

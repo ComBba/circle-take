@@ -101,11 +101,13 @@ https://youtu.be/QZrLzBsiJbo
 
 ## Live Demo / Testing URL
 
-**Live (click to run, no install):** https://circle-take-145226765474.us-central1.run.app/ui/
+**Live (running on Alibaba Cloud ECS):** http://43.98.203.221:8000/ui/ — Singapore `ap-southeast-1`.
+HTTPS mirror: https://circle-take-145226765474.us-central1.run.app/ui/
 
-Hosted on Google Cloud Run in fixture mode (deterministic golden path, no credentials, no
-per-request cost). The backend uses Qwen Cloud + Alibaba Cloud OSS at runtime in live mode —
-Alibaba usage proof: `backend/app/oss_storage.py`.
+The backend is **deployed and running on Alibaba Cloud ECS** (instance `circletake-proof`, Docker
+Compose) in fixture mode (deterministic golden path, no credentials, no per-request cost). It uses
+Qwen Cloud (DashScope) + Alibaba Cloud OSS at runtime in live mode — Alibaba deployment proof:
+`backend/app/alibaba_cloud_integration.py` + `deployment/alibaba_cloud_proof.md`.
 
 Or run free locally:
 ```bash
@@ -122,11 +124,14 @@ docker compose up --build      # -> http://localhost:8000/ui
 
 ## Alibaba Cloud Deployment Proof
 
-https://github.com/ComBba/circle-take/blob/main/backend/app/alibaba_cloud_integration.py
-— the single proof file. Qwen + Wan run on **Alibaba Cloud Model Studio (DashScope,
-`dashscope-intl.aliyuncs.com`)** and generated media is stored on **Alibaba Cloud OSS**
-(`oss2`, bucket `circle-take-media`). Run `python -m app.alibaba_cloud_integration` to print
-the services manifest.
+**Backend deployed & running on Alibaba Cloud ECS** — instance `i-t4n9vck3xkdijyhfxeb3`
+("circletake-proof"), `ecs.e-c1m2.large`, region `ap-southeast-1` (Singapore), reachable at
+`http://43.98.203.221:8000` (`/health` → 200). Console screenshot: `docs/screenshots/alibaba-deployment.png`.
+
+Code proof: https://github.com/ComBba/circle-take/blob/main/backend/app/alibaba_cloud_integration.py
+— Qwen + Wan run on **Alibaba Cloud Model Studio (DashScope, `dashscope-intl.aliyuncs.com`)** and
+generated media is stored on **Alibaba Cloud OSS** (`oss2`, bucket `circle-take-media`). Run
+`python -m app.alibaba_cloud_integration` to print the services manifest.
 
 ## Architecture Diagram
 
