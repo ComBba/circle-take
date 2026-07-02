@@ -62,7 +62,12 @@ def main() -> None:
     thr = config.gate_threshold()
     print(f"[spike] GATE scores = {gate}")
     print(f"[spike] worst={worst}  threshold={thr}  PASS={worst >= thr}")
-    print(f"[spike] RESULT: {'PASS — reference-conditioned reshoot clears the gate' if worst >= thr else 'BELOW THRESHOLD — would escalate/tune'}")
+    verdict = (
+        "PASS — reference-conditioned reshoot clears the gate"
+        if worst >= thr
+        else "BELOW THRESHOLD — would escalate/tune"
+    )
+    print(f"[spike] RESULT: {verdict}")
 
 
 if __name__ == "__main__":
