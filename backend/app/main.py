@@ -181,7 +181,7 @@ def _effective_live(
     jkey, expected = config.judge_key(), config.judge_code()
     if jkey and expected:
         funded = bool(store.get_artifact(eid, "judge_funded"))
-        code_ok = bool(judge_code) and hmac.compare_digest(judge_code, expected)
+        code_ok = bool(judge_code) and hmac.compare_digest(judge_code or "", expected)
         if not funded and starting and code_ok and ratelimit.try_consume(config.judge_daily_cap()):
             store.put_artifact(eid, "judge_funded", True)
             funded = True
